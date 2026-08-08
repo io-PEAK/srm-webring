@@ -8,7 +8,12 @@ export default defineWorkersConfig({
 		testTimeout: 30000,
 		poolOptions: {
 			workers: {
-				wrangler: { configPath: "./wrangler.jsonc" },
+			wrangler: { configPath: "./wrangler.jsonc" },
+			miniflare: {
+				// Test-only bindings (never deployed — injected only by the
+				// vitest pool). Mirrors the production LOOKUP_SECRET secret.
+				bindings: { LOOKUP_SECRET: "test-secret" },
+			},
 			},
 		},
 	},

@@ -5,7 +5,7 @@
 // ============================================================
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { SELF, fetchMock } from "cloudflare:test";
+import { env, SELF, fetchMock } from "cloudflare:test";
 
 function pngBytes() {
   return new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01, 0x02]).buffer;
@@ -35,13 +35,13 @@ const FIELDS = {
 
 // Mock the GitHub API a join request touches. `members` is mutated in place
 // after each successful PR to simulate the merged members.json on main.
-// `times` is how many join requests the test will make (each endpoint is hit
-// once per join), so interceptors are fully consumed before the afterEach
-// `assertNoPendingInterceptors` check.
+// `times` is how many join requests the test will make; members.json is GET'd
+// twice per cycle (fail-fast site check on /join, then finalize on /verify),
+// so interceptors are fully consumed before the afterEach check.
 function mockGitHub(members, putBodies, times = 1) {
   const gh = fetchMock.get("https://api.github.com");
   gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/contents/data/members.json", method: "GET" })
-    .reply(200, () => ({ content: b64(JSON.stringify(members, null, 2)), sha: "file-sha" })).times(times);
+    .reply(200, () => ({ content: b64(JSON.stringify(members, null, 2)), sha: "file-sha" })).times(2 * times);
   gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/git/ref/heads/main", method: "GET" })
     .reply(200, () => ({ object: { sha: "main-sha" } })).times(times);
   gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/contents/data/cities.json", method: "GET" })
@@ -57,6 +57,41 @@ function mockGitHub(members, putBodies, times = 1) {
     }).times(times);
   gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/pulls", method: "POST" })
     .reply(201, () => ({ html_url: "https://github.com/io-PEAK/srm-ncr-webring/pull/1" })).times(times);
+}
+
+// Mock the Brevo email API (verification links are sent on /join).
+function mockBrevo(times) {
+  fetchMock.get("https://api.brevo.com")
+    .intercept({ path: "/v3/smtp/email", method: "POST" })
+    .reply(201, () => ({ messageId: "test-message-id" })).times(times);
+}
+
+const normSite = s => String(s).replace(/\/+$/, "").toLowerCase();
+
+async function joinOnly(fields) {
+  const res = await SELF.fetch("https://worker.dev/join", { method: "POST", body: joinBody(fields) });
+  const data = await res.json();
+  return { res, data };
+}
+
+async function pendingFor(website) {
+  const raw = await env.EMAIL_STORE.get("pending:join:" + normSite(website));
+  expect(raw).toBeTruthy();
+  return JSON.parse(raw);
+}
+
+function verifyLink(pending, website) {
+  return "https://worker.dev/join/verify?token=" + pending.token + "&site=" + encodeURIComponent(website);
+}
+
+// POST /join once, then open the verification link.
+async function joinAndVerify(fields) {
+  const { res, data } = await joinOnly(fields);
+  expect(res.status).toBe(200);
+  expect(data.pending).toBe(true);
+  const pending = await pendingFor(fields.website);
+  const verify = await SELF.fetch(verifyLink(pending, fields.website));
+  return { pending, verify };
 }
 
 describe("badge serve route", () => {
@@ -128,7 +163,7 @@ describe("update-badge route", () => {
   });
 });
 
-describe("join route", () => {
+describe("join route (magic link verification)", () => {
   beforeEach(() => {
     fetchMock.activate();
     fetchMock.disableNetConnect();
@@ -138,25 +173,55 @@ describe("join route", () => {
     fetchMock.deactivate();
   });
 
+  it("emails a link and only opens a PR once the link is clicked", async () => {
+    const members = [];
+    const putBodies = [];
+    mockGitHub(members, putBodies, 1);
+    mockBrevo(1);
+
+    const join = await joinOnly(FIELDS);
+    expect(join.res.status).toBe(200);
+    expect(join.data.pending).toBe(true);
+    expect(join.data.message).toContain("srmist.edu.in");
+
+    // No PR before verification.
+    expect(members).toHaveLength(0);
+    expect(putBodies).toHaveLength(0);
+
+    const pending = await pendingFor(FIELDS.website);
+    const verify = await SELF.fetch(verifyLink(pending, FIELDS.website));
+    expect(verify.status).toBe(200);
+    const page = await verify.text();
+    expect(page).toContain("Verified!");
+    expect(page).toContain("https://github.com/io-PEAK/srm-ncr-webring/pull/1");
+    // The verified page hands the member their widget code (step 3).
+    expect(page).toContain("srm-ring-widget");
+    expect(page).toContain("/widget?site=https%3A%2F%2Fshivam.example");
+    expect(page).toContain("img/tree_yellow.png");
+
+    expect(members).toHaveLength(1);
+    expect(members[0].name).toBe("Shivam");
+    expect(members[0].collegeEmail).toBeUndefined();
+    expect(members[0].personalEmail).toBeUndefined();
+    expect(putBodies[0].message).toBe("Add Shivam to webring");
+  });
+
   it("re-joining with the same college email overwrites the existing entry", async () => {
     const members = [];
     const putBodies = [];
     mockGitHub(members, putBodies, 2);
+    mockBrevo(2);
 
-    const first = await SELF.fetch("https://worker.dev/join", { method: "POST", body: joinBody(FIELDS) });
-    expect(first.status).toBe(200);
+    await joinAndVerify(FIELDS);
     expect(members).toHaveLength(1);
 
-    const updated = await SELF.fetch("https://worker.dev/join", {
-      method: "POST",
-      body: joinBody({
-        ...FIELDS,
-        name: "Shivam Kumar",
-        website: "https://shivam-dev.example",
-        location: "Noida",
-      }),
+    const updated = await joinAndVerify({
+      ...FIELDS,
+      name: "Shivam Kumar",
+      website: "https://shivam-dev.example",
+      location: "Noida",
     });
-    expect(updated.status).toBe(200);
+    expect(updated.verify.status).toBe(200);
 
     // Still one member, with the new details — not a duplicate.
     expect(members).toHaveLength(1);
@@ -170,16 +235,51 @@ describe("join route", () => {
     const members = [];
     const putBodies = [];
     mockGitHub(members, putBodies, 2);
+    mockBrevo(2);
 
-    await SELF.fetch("https://worker.dev/join", { method: "POST", body: joinBody(FIELDS) });
-    const again = await SELF.fetch("https://worker.dev/join", {
-      method: "POST",
-      body: joinBody({ ...FIELDS, program: "B.Tech ECE" }),
-    });
+    await joinAndVerify(FIELDS);
+    const again = await joinAndVerify({ ...FIELDS, program: "B.Tech ECE" });
 
-    expect(again.status).toBe(200);
+    expect(again.verify.status).toBe(200);
     expect(members).toHaveLength(1);
     expect(members[0].program).toBe("B.Tech ECE");
+  });
+
+  it("uploads the badge only after a verified join and serves it back", async () => {
+    const members = [];
+    const putBodies = [];
+    mockGitHub(members, putBodies, 1);
+    mockBrevo(1);
+
+    const form = new FormData();
+    for (const [k, v] of Object.entries(FIELDS)) {
+      if (k !== "badge") form.append(k, v);
+    }
+    form.append("badgeFile", new File([pngBytes()], "badge.png", { type: "image/png" }));
+
+    const res = await SELF.fetch("https://worker.dev/join", { method: "POST", body: form });
+    const data = await res.json();
+    expect(data.pending).toBe(true);
+    expect(members).toHaveLength(0);
+
+    const pending = await pendingFor(FIELDS.website);
+    const verify = await SELF.fetch(verifyLink(pending, FIELDS.website));
+    expect(verify.status).toBe(200);
+
+    expect(members[0].badge).toMatch(/^https:\/\/worker\.dev\/badges\/.+\.png$/);
+    const served = await SELF.fetch(members[0].badge);
+    expect(served.status).toBe(200);
+    expect(served.headers.get("content-type")).toBe("image/png");
+  });
+
+  it("rejects a non-SRM college email before sending anything", async () => {
+    const res = await SELF.fetch("https://worker.dev/join", {
+      method: "POST",
+      body: joinBody({ ...FIELDS, collegeEmail: "shivam@gmail.com" }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("srmist.edu.in");
   });
 
   it("rejects a different person registering an already-taken site", async () => {
@@ -203,5 +303,139 @@ describe("join route", () => {
       body: joinBody({ name: "No Website" }),
     });
     expect(res.status).toBe(400);
+  });
+
+  it("shows the error page for an invalid or expired verification link", async () => {
+    const res = await SELF.fetch(
+      "https://worker.dev/join/verify?token=bogus-token&site=https%3A%2F%2Fshivam.example"
+    );
+    expect(res.status).toBe(200);
+    const page = await res.text();
+    expect(page).toContain("Link invalid or expired");
+  });
+
+  it("consumes the pending link after verification", async () => {
+    mockGitHub([], [], 1);
+    mockBrevo(1);
+
+    const { pending } = await joinAndVerify(FIELDS);
+    expect(pending).toBeTruthy();
+
+    // Second click of the same link is rejected (single use).
+    const again = await SELF.fetch(verifyLink(pending, FIELDS.website));
+    expect(again.status).toBe(200);
+    expect(await again.text()).toContain("Link invalid or expired");
+  });
+});
+
+describe("widget tracking", () => {
+  it("records a ping from the tracking pixel and returns a 1x1 GIF", async () => {
+    // The pool persists KV across runs; clear the key so the count
+    // assertion is deterministic.
+    await env.EMAIL_STORE.delete("widget:site:https://shivam.example");
+
+    const res = await SELF.fetch("https://worker.dev/widget?site=https://shivam.example");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/gif");
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect(bytes[0]).toBe(0x47); // 'G'
+    expect(bytes[1]).toBe(0x49); // 'I'
+
+    const rec = JSON.parse(await env.EMAIL_STORE.get("widget:site:https://shivam.example"));
+    expect(rec.count).toBe(1);
+    expect(rec.lastSeen).toBeTruthy();
+
+    await SELF.fetch("https://worker.dev/widget?site=https://shivam.example");
+    const rec2 = JSON.parse(await env.EMAIL_STORE.get("widget:site:https://shivam.example"));
+    expect(rec2.count).toBe(2);
+  });
+
+  it("rejects a widget ping without a site", async () => {
+    const res = await SELF.fetch("https://worker.dev/widget");
+    expect(res.status).toBe(400);
+  });
+
+  it("widget-status requires the lookup secret", async () => {
+    const res = await SELF.fetch("https://worker.dev/widget-status?site=https://shivam.example");
+    expect(res.status).toBe(401);
+  });
+
+  it("widget-status returns the recorded ping for a known site", async () => {
+    await env.EMAIL_STORE.delete("widget:site:https://status.example");
+    await SELF.fetch("https://worker.dev/widget?site=https://status.example");
+    const res = await SELF.fetch("https://worker.dev/widget-status?site=https://status.example", {
+      headers: { Authorization: "Bearer test-secret" },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.count).toBe(1);
+    expect(body.lastSeen).toBeTruthy();
+  });
+
+  it("widget-status returns empty for an unknown site", async () => {
+    const res = await SELF.fetch("https://worker.dev/widget-status?site=https://nope.example", {
+      headers: { Authorization: "Bearer test-secret" },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ lastSeen: null, count: 0 });
+  });
+});
+
+describe("notify route", () => {
+  beforeEach(() => {
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+  });
+  afterEach(() => {
+    fetchMock.assertNoPendingInterceptors();
+    fetchMock.deactivate();
+  });
+
+  async function seedMember(site) {
+    await env.EMAIL_STORE.put(site, JSON.stringify({
+      name: "Shivam",
+      collegeEmail: "sn1234@srmist.edu.in",
+      personalEmail: "shivam@example.com",
+    }));
+  }
+
+  it("rejects unauthenticated requests", async () => {
+    const res = await SELF.fetch("https://worker.dev/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ site: "https://shivam.example", type: "widget-warning" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("sends a widget-warning email", async () => {
+    await seedMember("https://shivam.example");
+    mockBrevo(1);
+    const res = await SELF.fetch("https://worker.dev/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer test-secret" },
+      body: JSON.stringify({ site: "https://shivam.example", type: "widget-warning" }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).success).toBe(true);
+  });
+
+  it("sends a widget-removal email and rejects unknown types", async () => {
+    await seedMember("https://shivam.example");
+    mockBrevo(1);
+    const res = await SELF.fetch("https://worker.dev/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer test-secret" },
+      body: JSON.stringify({ site: "https://shivam.example", type: "widget-removal" }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).success).toBe(true);
+
+    const bad = await SELF.fetch("https://worker.dev/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer test-secret" },
+      body: JSON.stringify({ site: "https://shivam.example", type: "nope" }),
+    });
+    expect(bad.status).toBe(400);
   });
 });
