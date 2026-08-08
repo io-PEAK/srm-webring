@@ -1,0 +1,144 @@
+# Runs daily (plus manual dispatch). Enforces that every member has the
+# webring widget installed on their site. The widget embeds a 1x1 pixel
+# that pings the Worker's /widget route on every visitor load, so the
+# Worker knows the widget is present. If a member's widget stops
+# reporting, they get a warning email at day 21 and are removed at day 30.
+#
+# Direct pushes to main are blocked by branch protection (the
+# "validate" status check only runs on pull requests), so the results
+# are pushed as a pull request that the Validate Join PR workflow
+# validates and auto-merges.
+name: Check Widget Installation
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check widget presence and handle notifications
+        run: |
+          node -e "
+          const fs = require('fs');
+          const members = require('./data/members.json');
+
+          const LOOKUP_SECRET = process.env.LOOKUP_SECRET;
+          const WORKER_URL = 'https://backend.srmncrwebring.workers.dev';
+
+          // Widget counts as present if it pinged within this window
+          // (checks run daily, but a quiet site can legitimately go a
+          // few days without visitors).
+          const MAX_AGE_DAYS = 5;
+          const WARN_DAYS = 21;
+          const REMOVE_DAYS = 30;
+
+          async function widgetLastSeen(site) {
+            const res = await fetch(WORKER_URL + '/widget-status?site=' + encodeURIComponent(site), {
+              headers: { 'Authorization': 'Bearer ' + LOOKUP_SECRET }
+            });
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.lastSeen ? new Date(data.lastSeen) : null;
+          }
+
+          async function notify(site, type) {
+            const res = await fetch(WORKER_URL + '/notify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + LOOKUP_SECRET
+              },
+              body: JSON.stringify({ site: site, type: type })
+            });
+            if (!res.ok) throw new Error(type + ' notify failed with ' + res.status);
+          }
+
+          (async () => {
+            const now = new Date();
+            const remaining = [];
+
+            for (const m of members) {
+              let lastSeen = null;
+              try {
+                lastSeen = await widgetLastSeen(m.website);
+              } catch (err) {
+                console.error('Failed to query widget status for ' + m.website + ':', err.message);
+              }
+
+              const present = lastSeen !== null &&
+                (now - lastSeen) / (1000 * 60 * 60 * 24) < MAX_AGE_DAYS;
+
+              if (present) {
+                console.log('Widget present:', m.website);
+                delete m.widgetMissingSince;
+                delete m.widgetWarningEmailSent;
+                delete m.widgetRemovalEmailSent;
+                remaining.push(m);
+                continue;
+              }
+
+              m.widgetMissingSince = m.widgetMissingSince || now.toISOString();
+              const daysMissing = (now - new Date(m.widgetMissingSince)) / (1000 * 60 * 60 * 24);
+              console.log(m.website + ' widget missing for ' + daysMissing.toFixed(1) + ' days.');
+
+              if (daysMissing >= REMOVE_DAYS && !m.widgetRemovalEmailSent) {
+                console.log('Day ' + REMOVE_DAYS + ' limit reached. Removing member:', m.website);
+                try {
+                  await notify(m.website, 'widget-removal');
+                  m.widgetRemovalEmailSent = true;
+                } catch (err) {
+                  console.error('Failed to send widget-removal email:', err.message);
+                }
+                // Do not push to remaining (permanently removed)
+                continue;
+              }
+
+              if (daysMissing >= WARN_DAYS && !m.widgetWarningEmailSent) {
+                console.log('Day ' + WARN_DAYS + ' reached. Sending widget warning to:', m.website);
+                try {
+                  await notify(m.website, 'widget-warning');
+                  m.widgetWarningEmailSent = true;
+                } catch (err) {
+                  console.error('Failed to send widget warning:', err.message);
+                }
+              }
+
+              remaining.push(m);
+            }
+
+            fs.writeFileSync('./data/members.json', JSON.stringify(remaining, null, 2));
+          })();
+          "
+        env:
+          LOOKUP_SECRET: ${{ secrets.LOOKUP_SECRET }}
+
+      - name: Open PR with widget-check results
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Nothing changed — skip. (git diff --quiet exits 1 when changed;
+          # inside an `if` it is exempt from the step's set -e.)
+          if git diff --quiet data/members.json; then
+            echo "No widget status changes; skipping."
+            exit 0
+          fi
+
+          BRANCH="ci/widget-check-$(date +%s)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add data/members.json
+          git commit -m "chore: process missing widget warnings and removals"
+          git push origin "$BRANCH"
+
+          gh pr create --base main --head "$BRANCH" \
+            --title "chore: process missing widget warnings and removals" \
+            --body "Automated widget-check results. The **Validate Join PR** workflow validates and auto-merges this."
