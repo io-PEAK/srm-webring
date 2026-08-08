@@ -32,8 +32,8 @@ A public webring for SRM University NCR campus students to showcase portfolios, 
 |:---:|:---:|
 | **<img src="images/icons/carousel.svg" width="20" height="20" valign="middle"/> &nbsp; 3D panel carousel**<br/>A full-screen CSS 3D ring of five panels (splash, about, directory, explorer, join) navigated by dots, drag/swipe, and keyboard. Panels are addressable by hash for deep links. | **<img src="images/icons/map.svg" width="20" height="20" valign="middle"/> &nbsp; Animated India map**<br/>Every member is pinned onto an India SVG with animated connection lines. City coordinates are pre-resolved into `data/cities.json`. |
 | **<img src="images/icons/search.svg" width="20" height="20" valign="middle"/> &nbsp; Searchable directory**<br/>A paginated member table with live search, kept in sync with an interactive ring map you can pan and zoom. | **<img src="images/icons/arrows.svg" width="20" height="20" valign="middle"/> &nbsp; Live site explorer**<br/>Browse member sites in an embedded live preview with a "click to interact" overlay and prev / next / random navigation. |
-| **<img src="images/icons/badge.svg" width="20" height="20" valign="middle"/> &nbsp; Animated badge generator**<br/>An 88×31 GIF editor with metallic shimmer, glitch scan, and typewriter presets, a custom frame strip, and per-frame delay. | **<img src="images/icons/dataflow.svg" width="20" height="20" valign="middle"/> &nbsp; Automated onboarding**<br/>The join form hits a Worker that opens a pull request; GitHub Actions validates and auto-merges it. Rejoining with the same college email updates your existing entry instead of duplicating it. |
-| **<img src="images/icons/watch.svg" width="20" height="20" valign="middle"/> &nbsp; Automated health monitoring**<br/>Scheduled workflows probe every member site, hide down members, email warnings, and remove entries after the 15-day grace period. | **<img src="images/icons/lock.svg" width="20" height="20" valign="middle"/> &nbsp; Privacy by design**<br/>Personal emails are stored only in Cloudflare KV and are stripped from the public `members.json`. Uploads are validated by magic bytes, never by file extension. |
+| **<img src="images/icons/badge.svg" width="20" height="20" valign="middle"/> &nbsp; Animated badge generator**<br/>An 88×31 GIF editor with metallic shimmer, glitch scan, and typewriter presets, a custom frame strip, and per-frame delay. | **<img src="images/icons/dataflow.svg" width="20" height="20" valign="middle"/> &nbsp; Automated onboarding**<br/>The join form emails a one-time verification link to the member's `@srmist.edu.in` address; clicking it makes the Worker open a pull request that GitHub Actions validates and auto-merges. Rejoining with the same college email updates your existing entry instead of duplicating it. |
+| **<img src="images/icons/watch.svg" width="20" height="20" valign="middle"/> &nbsp; Automated health monitoring**<br/>Scheduled workflows probe every member site, hide down members, email warnings, and remove entries after the 15-day grace period. The member widget carries a 1x1 pixel that pings the Worker, so a daily workflow can enforce installation — warning at day 21, removal at day 30. | **<img src="images/icons/lock.svg" width="20" height="20" valign="middle"/> &nbsp; Privacy by design**<br/>Personal emails are stored only in Cloudflare KV and are stripped from the public `members.json`. Uploads are validated by magic bytes, never by file extension. |
 
 **<img src="images/icons/techstack.svg" width="20" height="20" valign="middle"/> &nbsp; Tech Stack**<br/>
 
@@ -65,12 +65,13 @@ A public webring for SRM University NCR campus students to showcase portfolios, 
               BADGE_STORE        │                          │  contents)
                                  │
                                  ▼
-                ┌────────────────────────────┐
-                │        GitHub Actions      │   cron health checks,
-                │   validate-join · check-   │   down-site rechecks,
-                │   sites · recheck-down-    │   graduated cleanup
-                │   sites · cleanup-graduated│
-                └───────┬────────────────────┘
+                 ┌────────────────────────────┐
+                 │        GitHub Actions      │   cron health checks,
+                 │   validate-join · check-   │   down-site rechecks,
+                 │   sites · recheck-down-    │   graduated cleanup,
+                 │   sites · cleanup-graduated│   widget enforcement
+                 │   · widget-check           │
+                 └───────┬────────────────────┘
                         │ /notify, /email-lookup (Bearer secret)
                         ▼
                 ┌────────────────────────────┐
@@ -84,14 +85,19 @@ A public webring for SRM University NCR campus students to showcase portfolios, 
 **Joining / updating a member**
 
 ```
-Member → join.html (multipart POST) → Worker
+Member → join.html (multipart POST /join) → Worker
+   ├─ validates form + badge bytes, checks the site is free
    ├─ stores { collegeEmail, personalEmail } in KV (never committed)
-   ├─ stores uploaded badge in KV (magic-byte validated, ≤ 1 MB)
-   ├─ appends/updates the entry in members.json on a branch
-   ├─ geocodes new cities via Nominatim → data/cities.json
-   └─ opens a PR → validate-join workflow auto-merges + deletes branch
-        → data/members.json on main updates → site reflects new member
+   └─ emails a one-time verification link to the @srmist.edu.in address
+        → member clicks it (GET /join/verify?token=…)
+             ├─ stores uploaded badge in KV (magic-byte validated, ≤ 1 MB)
+             ├─ appends/updates the entry in members.json on a branch
+             ├─ geocodes new cities via Nominatim → data/cities.json
+             └─ opens a PR → validate-join workflow auto-merges + deletes branch
+                  → data/members.json on main updates → site reflects new member
 ```
+
+**Widget install** — The "Verified" page (and the snippet on the join page) hands the member the widget code, which now embeds a 1x1 pixel pointing at `GET /widget?site=…`. Every visitor load pings the Worker, which records the last ping in KV. A `widget-check` workflow runs daily, reads `widget-status?site=` for each member, warns at day 21 without a ping, and removes the entry at day 30 — both via the `/notify` route (Brevo).
 
 **Enquiries** — `enquiry.html` POSTs to the Worker, which auto-creates the `enquiry-*` label if missing and opens a labeled GitHub issue with the visitor's details.
 
@@ -121,7 +127,7 @@ Member → join.html (multipart POST) → Worker
 │   ├── ring.js             # #member-url?nav=prev|next redirect handler
 │   ├── map-arrows.js       # On-map prev / next / random navigation
 │   ├── badge.js            # Badge editor + animated GIF export (gif.js)
-│   ├── join.js             # Join form validation + multipart submit
+│   ├── join.js             # Join form validation + step indicator + multipart submit
 │   └── enquiry.js          # Enquiry form validation + submit
 ├── data/
 │   ├── members.json        # Public member list (the ring's source of truth)
@@ -131,11 +137,11 @@ Member → join.html (multipart POST) → Worker
 ├── img/                    # SRM logo, tree emblem, collage
 ├── images/                 # README screenshots + icons
 ├── backend/                # Cloudflare Worker API
-│   ├── src/index.js        # All routes: join, enquiry, badges, members, notify
-│   ├── test/index.spec.js  # 9 vitest tests against the Worker
+│   ├── src/index.js        # All routes: join, enquiry, badges, members, widget, notify
+│   ├── test/index.spec.js  # 22 vitest tests against the Worker
 │   ├── vitest.config.js    # Workers-pool vitest config
 │   └── wrangler.jsonc      # Worker config + KV namespaces
-└── .github/workflows/      # validate-join · check-sites · recheck-down-sites · cleanup-graduated
+└── .github/workflows/      # validate-join · check-sites · recheck-down-sites · cleanup-graduated · widget-check
 ```
 
 **<img src="images/icons/api.svg" width="20" height="20" valign="middle"/> &nbsp; API Reference**<br/>
@@ -146,10 +152,13 @@ Base URL: `https://backend.srmncrwebring.workers.dev`
 | :----- | :-------------------- | :--------------------- | :----------------------------------------------------------------------------- |
 | `GET`  | `/api/members`        | Public                 | Read the active member list from `data/members.json` (GitHub API), cached 60 s |
 | `GET`  | `/badges/{key}`       | Public                 | Serve an uploaded member badge from KV (png / gif / jpg)                       |
-| `POST` | `/join`               | Public                 | Join/update request: multipart form (badge file) or JSON. Opens a PR           |
+| `POST` | `/join`               | Public                 | Step 1: validate the form and email a one-time verification link to the `@srmist.edu.in` address. Returns `{ pending: true }` |
+| `GET`  | `/join/verify?token=` | Public                 | Step 2: one-time magic link from the email. Verifies ownership, commits the member to a branch, opens the PR, and serves a "Verified" page |
 | `POST` | `/enquiry`            | Public                 | Create a labeled GitHub issue from the enquiry form                            |
 | `GET`  | `/email-lookup?site=` | `Bearer LOOKUP_SECRET` | Return the stored email record for a site (used by workflows)                  |
-| `POST` | `/notify`             | `Bearer LOOKUP_SECRET` | Send a Brevo email (`warning`, `removal`, or `graduation`) for a site          |
+| `GET`  | `/widget?site=`       | Public                 | 1x1 tracking pixel embedded in the member widget; records the ping in KV       |
+| `GET`  | `/widget-status?site=`| `Bearer LOOKUP_SECRET` | Return the recorded widget ping for a site (used by the widget-check workflow) |
+| `POST` | `/notify`             | `Bearer LOOKUP_SECRET` | Send a Brevo email (`warning`, `removal`, `graduation`, `widget-warning`, `widget-removal`) for a site |
 | `POST` | `/update-badge`       | Public                 | Overwrite a site's badge in KV from a multipart upload                         |
 
 ### Join request fields (`POST /join`)
@@ -160,6 +169,8 @@ Base URL: `https://backend.srmncrwebring.workers.dev`
 | `gradDate`                               | Stored as `DD/MM/YYYY`; validated in the UI                                                                                          |
 | `collegeEmail`, `personalEmail`          | Required but **never committed** — stored in KV under `site → {name, collegeEmail, personalEmail}` and `college:<email> → {website}` |
 | `badgeFile`                              | Optional image (PNG/GIF/JPEG), magic-byte validated, ≤ 1 MB, stored at `badges/<fnv1a-hash>.<ext>`                                   |
+
+Joining is three-step: `POST /join` only sends the verification link (it never touches git); opening `GET /join/verify?token=...&site=...` from the email finishes the join and serves the widget snippet; the member pastes the widget (which carries the tracking pixel) into their footer. Only `@srmist.edu.in` college emails are accepted — the link is sent to that address, proving the applicant owns it. Links expire after 1 hour, are single-use, and a site can't be double-submitted within 60 s.
 
 **<img src="images/icons/start.svg" width="20" height="20" valign="middle"/> &nbsp; Getting Started**<br/>
 
@@ -188,7 +199,7 @@ python3 -m http.server 8000
 cd backend
 npm install
 
-# run the test suite (9 tests, real Workers runtime)
+# run the test suite (22 tests, real Workers runtime)
 npm test
 
 # run the Worker locally
@@ -210,7 +221,7 @@ Optional Worker variable `SENDER_EMAIL` (defaults to `webring@srmncr.edu.in`) se
 
 ### GitHub Actions secrets
 
-`GITHUB_TOKEN` (or a PAT with repo scope) and `LOOKUP_SECRET` are needed by the workflows that validate join PRs and send down-site / graduation emails. Add them under **Settings → Secrets and variables → Actions**.
+`GITHUB_TOKEN` (or a PAT with repo scope) and `LOOKUP_SECRET` are needed by the workflows that validate join PRs and send down-site / graduation / widget emails. Add them under **Settings → Secrets and variables → Actions**.
 
 **<img src="images/icons/watch.svg" width="20" height="20" valign="middle"/> &nbsp; Automated Maintenance**<br/>
 
@@ -219,6 +230,7 @@ Optional Worker variable `SENDER_EMAIL` (defaults to `webring@srmncr.edu.in`) se
 | **Validate Join PR**         | PR touching `data/members.json` | Fails on duplicate site URLs or missing required fields; auto-merges and deletes the branch on success |
 | **Check Member Sites**       | `0 6 */3 * *` + manual          | Probes every site (8 s timeout); restores up sites, flags unreachable ones `hidden`                    |
 | **Recheck Down Sites**       | `0 6 */2 * *` + manual          | Restores recovered sites; emails a warning at day 10; removes the entry at day 15                      |
+| **Check Widget Installation**| `0 2 * * *` + manual            | Reads each member's widget ping; warns at day 21 without one; removes the entry at day 30             |
 | **Remove Graduated Members** | `0 0 * * *` + manual            | Removes members past `gradDate` + 30-day grace and sends a graduation email                            |
 
 **<img src="images/icons/security.svg" width="20" height="20" valign="middle"/> &nbsp; Security**<br/>
@@ -226,6 +238,7 @@ Optional Worker variable `SENDER_EMAIL` (defaults to `webring@srmncr.edu.in`) se
 - **Email privacy** — college and personal emails live only in Cloudflare KV. They are deleted from the join payload before it is committed to the repository.
 - **Upload validation** — badge files are checked against known PNG/GIF/JPEG magic bytes (extension is never trusted) and capped at 1 MB.
 - **Secret routes** — `/email-lookup` and `/notify` require a `Bearer LOOKUP_SECRET` header; tokens and API keys are stored as Wrangler/Workflow secrets, not in source.
+- **Email-verified joins** — only `@srmist.edu.in` college addresses are accepted, and the one-time verification link sent there proves the applicant owns the inbox before any git changes are made. Links are single-use and expire after 1 hour.
 - **Site-ownership checks** — a join request cannot claim a URL already owned by another member; rejoining by college email updates only the existing entry.
 
 **<img src="images/icons/check.svg" width="20" height="20" valign="middle"/> &nbsp; Testing**<br/>
@@ -235,6 +248,6 @@ cd backend
 npm test
 ```
 
-The suite (9 tests in `backend/test/index.spec.js`) runs through `@cloudflare/vitest-pool-workers`, so each test executes against the real Workers runtime with the `wrangler.jsonc` bindings, including the KV namespaces and the GitHub/geocode fetches, which are mocked per test.
+The suite (22 tests in `backend/test/index.spec.js`) runs through `@cloudflare/vitest-pool-workers`, so each test executes against the real Workers runtime with the `wrangler.jsonc` bindings, including the KV namespaces and the GitHub/Brevo/geocode fetches, which are mocked per test.
 
 ---
