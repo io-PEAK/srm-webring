@@ -6,6 +6,11 @@
 
 const BADGE_MAX_BYTES = 1024 * 1024; // 1 MB
 
+const RING_BASE = 'https://io-PEAK.github.io/srm-ncr-webring';
+
+// 1x1 transparent GIF served as the widget tracking pixel.
+const WIDGET_PIXEL = 'R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+
 const BADGE_SIGNATURES = [
   { ext: 'png', magic: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], type: 'image/png' },
   { ext: 'gif', magic: [0x47, 0x49, 0x46, 0x38], type: 'image/gif' },
@@ -62,6 +67,286 @@ async function parseBadgeForm(request) {
 
 function mimeForType(type) {
   return type;
+}
+
+// ── College email verification (magic link) ──────────
+// Joins are two-step: the form posts /join, which emails a one-time
+// verification link to the @srmist.edu.in address. Clicking the link
+// (GET /join/verify) commits the member to git and opens the PR.
+const SRM_COLLEGE_DOMAIN = '@srmist.edu.in';
+const PENDING_TTL_SECONDS = 60 * 60; // link expires after 1 hour
+const RESEND_COOLDOWN_MS = 60 * 1000;
+
+function generateToken() {
+  const buf = new Uint8Array(32);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function normSite(s) {
+  return String(s || '').replace(/\/+$/, '').toLowerCase();
+}
+
+function bytesToBase64(bytes) {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+function base64ToBytes(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+function httpError(message, status = 500) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+async function sendVerifyEmail(env, to, name, verifyUrl) {
+  const senderEmail = env.SENDER_EMAIL || 'webring@srmncr.edu.in';
+  const htmlContent = `
+    <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
+      <h2 style="color: #6fb3ff; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Verification</h2>
+      <p>Hi <strong>${escapeHtml(name)}</strong>,</p>
+      <p>You submitted a request to join the SRM^NCR WebRing. To confirm this SRM^NCR email address belongs to you, click the button below:</p>
+      <p style="text-align: center; margin: 28px 0;">
+        <a href="${verifyUrl}" style="display: inline-block; padding: 12px 26px; background-color: #0c4da2; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 700;">Verify my college email</a>
+      </p>
+      <p style="color: #aaa;">Or open this link: <a href="${verifyUrl}" style="color: #6fb3ff; word-break: break-all;">${verifyUrl}</a></p>
+      <p>This link expires in 1 hour and can only be used once. If you didn't make this request, you can ignore this email.</p>
+      <p>Best regards,<br>SRM^NCR WebRing Bot</p>
+    </div>
+  `;
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': env.BREVO_API_KEY,
+      'content-type': 'application/json',
+      'accept': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: 'SRM^NCR WebRing', email: senderEmail },
+      to: [{ email: to, name }],
+      subject: 'Verify your email to join SRM^NCR WebRing',
+      htmlContent,
+    }),
+  });
+  return { ok: res.ok, json: await res.json() };
+}
+
+function pageShell(title, bodyHtml, linkHtml) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} | SRM NCR WebRing</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b0e14; color: #e8eef7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .card { max-width: 460px; margin: 24px; padding: 32px; background: #141a24; border: 1px solid #2a3446; border-radius: 12px; }
+    h1 { color: #c8a008; margin: 0 0 12px; font-size: 1.6rem; }
+    p { line-height: 1.55; color: #aab6c8; }
+    a { color: #6fb3ff; }
+    .btn { display: inline-block; margin-top: 8px; padding: 10px 20px; background: #0c4da2; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    ${bodyHtml}
+    ${linkHtml ? `<p style="margin-top: 20px;">${linkHtml}</p>` : ''}
+  </div>
+</body>
+</html>`;
+}
+
+function verifiedPage(prUrl, website, pixelBase) {
+  const code = escapeHtml(widgetSnippetHtml(RING_BASE, website, pixelBase));
+  return pageShell(
+    'Verified',
+    `<h1>Verified! &#10003;</h1>
+     <p>Your SRM^NCR college email is verified. Your webring request has been submitted as a pull request and will be reviewed shortly.</p>
+     <h2 style="color:#6fb3ff;font-size:1.05rem;margin:20px 0 8px;">Next: add the widget to your site</h2>
+     <p style="font-size:0.85rem;margin-bottom:10px;">Paste this just before <code>&lt;/body&gt;</code> on your homepage so your site appears in ring navigation:</p>
+     <pre id="wcode" style="margin:0 0 10px;background:#0b0e14;border:1px solid #2a3446;border-radius:6px;padding:12px;font-size:0.72rem;line-height:1.5;overflow:auto;white-space:pre-wrap;word-break:break-all;">${code}</pre>
+     <button class="btn" type="button" style="font-family:inherit;cursor:pointer;border:0;" onclick="copyCode()">Copy code</button>
+     <script>
+     function copyCode(){
+       var t=document.getElementById('wcode').textContent;
+       var btn=document.querySelector('button[onclick=copyCode]');
+       function done(){ if(btn){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy code';},1500);} }
+       function fb(){ var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta); }
+       if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done,function(){fb();done();}); } else { fb();done(); }
+     }
+     </script>`,
+    `<a class="btn" href="${prUrl}" target="_blank" rel="noopener noreferrer">View pull request &rarr;</a><br><br><a href="${RING_BASE}/">Back to the ring</a>`
+  );
+}
+
+// The widget members paste into their footer: ring navigation links, the
+// tree logo, the tracking pixel, and the inline styles. Shared by the
+// frontend builder (js/join.js) and the backend "verified" page.
+function widgetSnippetHtml(ringBase, site, pixelBase) {
+  const base = String(ringBase).replace(/\/+$/, '');
+  const px = String(pixelBase).replace(/\/+$/, '') + '/widget?site=' + encodeURIComponent(site);
+  return [
+    '<!-- SRM NCR WebRing widget -->',
+    '<div class="srm-ring-widget">',
+    '  <a href="' + base + '/#' + site + '?nav=prev" class="srm-ring-arrow">&larr;</a>',
+    '  <a href="' + base + '/" class="srm-ring-logo">',
+    '    <img src="' + base + '/img/tree_yellow.png" alt="SRM NCR WebRing" width="16" height="16">',
+    '    <span>SRM<sup>NCR</sup></span>',
+    '  </a>',
+    '  <a href="' + base + '/#' + site + '?nav=next" class="srm-ring-arrow">&rarr;</a>',
+    '</div>',
+    '<img src="' + px + '" width="1" height="1" alt="" style="border:0" aria-hidden="true">',
+    '<style>',
+    '.srm-ring-widget{display:inline-flex;align-items:center;gap:.6rem;padding:.5rem .9rem;',
+    'border:1px solid rgba(12,77,162,.35);border-radius:999px;background:#fff;',
+    'box-shadow:0 1px 3px rgba(0,0,0,.08)}',
+    '.srm-ring-arrow{text-decoration:none;font-weight:700;font-size:1.1rem;color:#0c4da2;line-height:1}',
+    '.srm-ring-logo{display:inline-flex;align-items:center;gap:.3rem;text-decoration:none;',
+    'font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem;line-height:1}',
+    '.srm-ring-logo img{width:16px;height:16px}',
+    '.srm-ring-logo sup{font-size:.6em}',
+    '</style>',
+  ].join('\n');
+}
+
+function verifyErrorPage() {
+  return pageShell(
+    'Link invalid',
+    `<h1>Link invalid or expired</h1>
+     <p>This verification link is invalid or has already been used. Please submit the join form again to receive a fresh link.</p>`,
+    `<a class="btn" href="https://io-PEAK.github.io/srm-ncr-webring/join.html">Back to the join form</a>`
+  );
+}
+
+// Check whether a website is already registered by someone other than the
+// member identified by `existingSite` (the site this college email owns).
+async function isSiteTaken(ghHeaders, OWNER, REPO, website, existingSite) {
+  const fileRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/members.json`, { headers: ghHeaders });
+  const fileData = await fileRes.json();
+  const members = JSON.parse(atob(fileData.content.replace(/\s/g, '')));
+  const newSite = normSite(website);
+  const existingIndex = existingSite
+    ? members.findIndex(m => normSite(m.website) === normSite(existingSite))
+    : -1;
+  return members.some((m, i) => i !== existingIndex && normSite(m.website) === newSite);
+}
+
+// Complete a verified join: store private emails in KV (never git), commit
+// the member to a branch, and open a PR.
+async function finalizeJoin(env, ghHeaders, OWNER, REPO, entry, emailData, existingSite) {
+  // Emails live only in KV (via emailData) — never in the public git payload.
+  delete entry.collegeEmail;
+  delete entry.personalEmail;
+
+  // 1. Get the current members.json
+  const fileRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/members.json`, { headers: ghHeaders });
+  const fileData = await fileRes.json();
+  const cleanBase64 = fileData.content.replace(/\s/g, '');
+  const members = JSON.parse(atob(cleanBase64));
+
+  const newSite = normSite(entry.website);
+  const existingIndex = existingSite
+    ? members.findIndex(m => normSite(m.website) === normSite(existingSite))
+    : -1;
+
+  // Prevent a *different* member from registering an already-taken site.
+  if (members.some((m, i) => i !== existingIndex && normSite(m.website) === newSite)) {
+    throw httpError('This website URL is already in the webring!', 400);
+  }
+
+  const isUpdate = existingIndex >= 0;
+  if (isUpdate) {
+    members[existingIndex] = entry;
+  } else {
+    members.push(entry);
+  }
+
+  // Private email mapping lives only in KV, never in git.
+  await env.EMAIL_STORE.put(entry.website, JSON.stringify(emailData));
+  const collegeKey = 'college:' + emailData.collegeEmail.toLowerCase().trim();
+  await env.EMAIL_STORE.put(collegeKey, JSON.stringify({ website: entry.website }));
+  if (isUpdate && existingSite && normSite(existingSite) !== newSite) {
+    await env.EMAIL_STORE.delete(existingSite);
+  }
+
+  const BRANCH_NAME = `join-${entry.name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}`;
+
+  // 2. Create a branch from main
+  const mainRef = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/git/ref/heads/main`, { headers: ghHeaders }).then(r => r.json());
+  await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/git/refs`, {
+    method: 'POST',
+    headers: ghHeaders,
+    body: JSON.stringify({ ref: `refs/heads/${BRANCH_NAME}`, sha: mainRef.object.sha }),
+  });
+
+  // 3. Commit members.json on that branch
+  await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/members.json`, {
+    method: 'PUT',
+    headers: ghHeaders,
+    body: JSON.stringify({
+      message: `${isUpdate ? 'Update' : 'Add'} ${entry.name} ${isUpdate ? 'in' : 'to'} webring`,
+      content: btoa(JSON.stringify(members, null, 2)),
+      sha: fileData.sha,
+      branch: BRANCH_NAME,
+    }),
+  });
+
+  // 4. Add the member's city to data/cities.json when it's new (best effort)
+  const cityKey = entry.location.toLowerCase().trim();
+  if (cityKey) {
+    try {
+      const citiesRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/cities.json`, { headers: ghHeaders });
+      if (citiesRes.ok) {
+        const citiesFile = await citiesRes.json();
+        const cities = JSON.parse(atob(citiesFile.content.replace(/\s/g, '')));
+        if (!cities[cityKey]) {
+          const geo = await geocodeLocation(entry.location);
+          if (geo) {
+            cities[cityKey] = geo;
+            await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/cities.json`, {
+              method: 'PUT',
+              headers: ghHeaders,
+              body: JSON.stringify({
+                message: `Add ${geo.name} to cities`,
+                content: btoa(JSON.stringify(cities, null, 2)),
+                sha: citiesFile.sha,
+                branch: BRANCH_NAME,
+              }),
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // cities update is best-effort; the member entry still succeeds
+    }
+  }
+
+  // 5. Open the PR
+  const prRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/pulls`, {
+    method: 'POST',
+    headers: ghHeaders,
+    body: JSON.stringify({
+      title: `${isUpdate ? 'Update request' : 'Join request'}: ${entry.name}`,
+      head: BRANCH_NAME,
+      base: 'main',
+      body: `Automated ${isUpdate ? 'update' : 'join'} request.\n\n${JSON.stringify(entry, null, 2)}`,
+    }),
+  });
+  const pr = await prRes.json();
+  return { prUrl: pr.html_url, website: entry.website };
 }
 
 // Best-effort geocode of a free-typed location via Nominatim (OSM).
@@ -204,6 +489,34 @@ export default {
         });
       }
 
+      // ── WIDGET PING (public tracking pixel, loaded from member sites) ──
+      // The widget snippet includes a 1x1 GIF that pings this route whenever
+      // a visitor loads a member's page, proving the widget is installed.
+      if (url.pathname === '/widget') {
+        if (request.method !== 'GET') {
+          return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+        }
+        const site = (url.searchParams.get('site') || '').trim();
+        if (!site) {
+          return new Response('Missing site parameter', { status: 400, headers: corsHeaders });
+        }
+        const key = 'widget:site:' + normSite(site);
+        const now = new Date().toISOString();
+        let prev = null;
+        try { prev = JSON.parse(await env.EMAIL_STORE.get(key)); } catch (e) { prev = null; }
+        await env.EMAIL_STORE.put(key, JSON.stringify({
+          lastSeen: now,
+          count: ((prev && Number(prev.count)) || 0) + 1,
+        }));
+        return new Response(base64ToBytes(WIDGET_PIXEL), {
+          headers: {
+            'Content-Type': 'image/gif',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            ...corsHeaders,
+          },
+        });
+      }
+
       // ── ENQUIRY ROUTE ──────────────────────────────
       if (url.pathname === '/enquiry') {
         if (request.method !== 'POST') {
@@ -266,6 +579,35 @@ export default {
           });
         }
 
+        return new Response(rawData, {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      }
+
+      // ── WIDGET STATUS ROUTE (GitHub Actions only) ──
+      // Returns the recorded widget pings for a site so the health-check
+      // workflows can enforce widget installation.
+      if (url.pathname === '/widget-status') {
+        if (request.method !== 'GET') {
+          return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+        }
+
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || authHeader !== `Bearer ${env.LOOKUP_SECRET}`) {
+          return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+        }
+
+        const site = url.searchParams.get('site');
+        if (!site) {
+          return new Response('Missing site parameter', { status: 400, headers: corsHeaders });
+        }
+
+        const rawData = await env.EMAIL_STORE.get('widget:site:' + normSite(site));
+        if (!rawData) {
+          return new Response(JSON.stringify({ lastSeen: null, count: 0 }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
         return new Response(rawData, {
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
         });
@@ -347,6 +689,31 @@ export default {
               <p>Best regards,<br>SRM^NCR WebRing Bot</p>
             </div>
           `;
+        } else if (type === 'widget-warning') {
+          subject = '[ACTION REQUIRED] Your webring widget is missing — SRM^NCR WebRing';
+          htmlContent = `
+            <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
+              <h2 style="color: #ffcc00; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Alert</h2>
+              <p>Hi <strong>${recipientName}</strong>,</p>
+              <p>Your site (<a href="${site}" style="color: #6fb3ff;">${site}</a>) is listed in the webring, but our checks can't find the webring widget on it.</p>
+              <div style="background-color: #222; border-left: 4px solid #ffcc00; padding: 15px; margin: 20px 0;">
+                <strong>[WARNING]</strong> The widget is what makes your site part of the ring navigation. If it's still missing in <strong>9 days</strong> (30 days total), your entry will be removed.
+              </div>
+              <p>You can get the code from the join page after verifying your email. Paste it just before <code>&lt;/body&gt;</code> on your homepage.</p>
+              <p>Best regards,<br>SRM^NCR WebRing Bot</p>
+            </div>
+          `;
+        } else if (type === 'widget-removal') {
+          subject = 'Removed from SRM^NCR WebRing — widget missing';
+          htmlContent = `
+            <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
+              <h2 style="color: #ff5555; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Update</h2>
+              <p>Hi <strong>${recipientName}</strong>,</p>
+              <p>Your site (<a href="${site}" style="color: #6fb3ff;">${site}</a>) has not had the webring widget installed for <strong>30 days</strong>, so your entry has been removed from <code>members.json</code>.</p>
+              <p>You're welcome to rejoin anytime — add the widget to your site and submit a new join request at <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color: #6fb3ff;">Join the ring</a>.</p>
+              <p>Best regards,<br>SRM^NCR WebRing Bot</p>
+            </div>
+          `;
         } else {
           return new Response('Invalid notification type', { status: 400, headers: corsHeaders });
         }
@@ -412,192 +779,181 @@ export default {
         });
       }
 
-      // ── JOIN ROUTE (Modified to store emails in KV and strip them) ──
-      if (request.method !== 'POST') {
-        return new Response('Method not allowed', { status: 405, headers: corsHeaders });
-      }
+      // ── JOIN ROUTE ────────────────────────────────
+      // Step 1 of verification: validate the form and email a one-time
+      // verification link to the @srmist.edu.in address. The PR is only
+      // opened after the link is clicked (GET /join/verify).
+      if (url.pathname === '/join') {
+        if (request.method !== 'POST') {
+          return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+        }
 
-      const { fields: rawFields, fileBytes } = await parseBadgeForm(request);
+        const { fields: rawFields, fileBytes } = await parseBadgeForm(request);
 
-      const entry = {
-        name: (rawFields.name || '').trim(),
-        website: (rawFields.website || '').trim(),
-        program: (rawFields.program || '').trim(),
-        gradDate: (rawFields.gradDate || '').trim(),
-        collegeEmail: (rawFields.collegeEmail || '').trim(),
-        personalEmail: (rawFields.personalEmail || '').trim(),
-        location: (rawFields.location || '').trim(),
-      };
+        const entry = {
+          name: (rawFields.name || '').trim(),
+          website: (rawFields.website || '').trim(),
+          program: (rawFields.program || '').trim(),
+          gradDate: (rawFields.gradDate || '').trim(),
+          collegeEmail: (rawFields.collegeEmail || '').trim().toLowerCase(),
+          personalEmail: (rawFields.personalEmail || '').trim(),
+          location: (rawFields.location || '').trim(),
+        };
 
-      if (!entry.name || !entry.website || !entry.program || !entry.location) {
-        return new Response(JSON.stringify({ success: false, error: 'Name, website, program, and location are required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      }
-
-      // Validate presence of emails
-      if (!entry.collegeEmail || !entry.personalEmail) {
-        return new Response(JSON.stringify({ success: false, error: 'Emails are required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      }
-
-      // Badge: prefer an uploaded image (stored in KV), fall back to a plain URL
-      if (fileBytes) {
-        const sig = detectBadgeType(fileBytes);
-        if (!sig) {
-          return new Response(JSON.stringify({ success: false, error: 'Badge must be a PNG, GIF, or JPEG image' }), {
+        if (!entry.name || !entry.website || !entry.program || !entry.location) {
+          return new Response(JSON.stringify({ success: false, error: 'Name, website, program, and location are required' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         }
-        if (fileBytes.byteLength > BADGE_MAX_BYTES) {
-          return new Response(JSON.stringify({ success: false, error: 'Badge is too large (max 1 MB)' }), {
-            status: 413,
+
+        if (!entry.collegeEmail || !entry.personalEmail) {
+          return new Response(JSON.stringify({ success: false, error: 'Emails are required' }), {
+            status: 400,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         }
-        const key = badgeKey(entry.website, sig.ext);
-        await env.BADGE_STORE.put(key, fileBytes);
-        entry.badge = url.origin + '/' + key;
-      } else if (rawFields.badge && typeof rawFields.badge === 'string') {
-        entry.badge = rawFields.badge.trim();
-      }
 
-      // Store private email mapping in KV
-      const emailData = {
-        name: entry.name,
-        collegeEmail: entry.collegeEmail,
-        personalEmail: entry.personalEmail
-      };
-      await env.EMAIL_STORE.put(entry.website, JSON.stringify(emailData));
-
-      // If this college email has joined before, this request is an update to
-      // that member's existing entry, not a brand-new member.
-      const collegeKey = 'college:' + emailData.collegeEmail.toLowerCase().trim();
-      const existingMappingRaw = await env.EMAIL_STORE.get(collegeKey);
-      let existingSite = null;
-      if (existingMappingRaw) {
-        try {
-          existingSite = JSON.parse(existingMappingRaw).website || null;
-        } catch (err) {
-          existingSite = null;
+        // Only SRM^NCR college addresses qualify.
+        if (!entry.collegeEmail.endsWith(SRM_COLLEGE_DOMAIN)) {
+          return new Response(JSON.stringify({ success: false, error: `Only ${SRM_COLLEGE_DOMAIN} college emails are accepted` }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
         }
+
+        // Validate badge bytes up front so a bad file is rejected before an
+        // email is sent. The actual upload happens on verification.
+        if (fileBytes) {
+          const sig = detectBadgeType(fileBytes);
+          if (!sig) {
+            return new Response(JSON.stringify({ success: false, error: 'Badge must be a PNG, GIF, or JPEG image' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+          if (fileBytes.byteLength > BADGE_MAX_BYTES) {
+            return new Response(JSON.stringify({ success: false, error: 'Badge is too large (max 1 MB)' }), {
+              status: 413,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+        } else if (rawFields.badge && typeof rawFields.badge === 'string') {
+          entry.badge = rawFields.badge.trim();
+        }
+
+        const emailData = {
+          name: entry.name,
+          collegeEmail: entry.collegeEmail,
+          personalEmail: entry.personalEmail
+        };
+
+        // Fail fast if the site is already registered by someone else.
+        const collegeKey = 'college:' + emailData.collegeEmail.toLowerCase().trim();
+        const existingMappingRaw = await env.EMAIL_STORE.get(collegeKey);
+        const existingSite = existingMappingRaw ? (JSON.parse(existingMappingRaw).website || null) : null;
+        if (await isSiteTaken(ghHeaders, OWNER, REPO, entry.website, existingSite)) {
+          return new Response(JSON.stringify({ success: false, error: 'This website URL is already in the webring!' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        // One pending link per site; don't spam the inbox on double-submits.
+        const siteKey = 'pending:join:' + normSite(entry.website);
+        const now = Date.now();
+        const existingPendingRaw = await env.EMAIL_STORE.get(siteKey);
+        if (existingPendingRaw) {
+          let rec = null;
+          try { rec = JSON.parse(existingPendingRaw); } catch (e) { rec = null; }
+          if (rec && now - rec.sentAt < RESEND_COOLDOWN_MS) {
+            return new Response(JSON.stringify({
+              success: true,
+              pending: true,
+              message: 'A verification link was already sent — check your college inbox.'
+            }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+          }
+        }
+
+        const token = generateToken();
+        const pending = {
+          token,
+          sentAt: now,
+          entry,
+          emailData,
+          fileBytesB64: fileBytes ? bytesToBase64(fileBytes) : null,
+        };
+        await env.EMAIL_STORE.put(siteKey, JSON.stringify(pending), { expirationTtl: PENDING_TTL_SECONDS });
+
+        const verifyUrl = url.origin + '/join/verify?token=' + token + '&site=' + encodeURIComponent(entry.website);
+        const brevo = await sendVerifyEmail(env, entry.collegeEmail, entry.name, verifyUrl);
+        if (!brevo.ok) {
+          await env.EMAIL_STORE.delete(siteKey);
+          return new Response(JSON.stringify({ success: false, error: 'Could not send the verification email. Please try again.' }), {
+            status: 502,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          pending: true,
+          message: `Verification link sent to ${entry.collegeEmail}.`
+        }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
       }
 
-      // Strip emails from the public payload before committing to git
-      delete entry.collegeEmail;
-      delete entry.personalEmail;
+      // ── JOIN VERIFY ROUTE (magic link opened from the email) ──
+      if (url.pathname === '/join/verify') {
+        if (request.method !== 'GET') {
+          return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+        }
+        const token = (url.searchParams.get('token') || '').trim();
+        const site = (url.searchParams.get('site') || '').trim();
+        const siteKey = 'pending:join:' + normSite(site);
+        const raw = await env.EMAIL_STORE.get(siteKey);
+        if (!token || !site || !raw) {
+          return new Response(verifyErrorPage(), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders },
+          });
+        }
+        const pending = JSON.parse(raw);
+        if (pending.token !== token) {
+          return new Response(verifyErrorPage(), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders },
+          });
+        }
 
-      const BRANCH_NAME = `join-${entry.name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}`;
+        const entry = pending.entry;
+        if (pending.fileBytesB64) {
+          const fileBytes = base64ToBytes(pending.fileBytesB64);
+          const sig = detectBadgeType(fileBytes);
+          const key = badgeKey(entry.website, sig.ext);
+          await env.BADGE_STORE.put(key, fileBytes);
+          entry.badge = url.origin + '/' + key;
+        }
 
-      // 1. Get the current members.json + main branch SHA
-      const fileRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/members.json`, { headers: ghHeaders });
-      const fileData = await fileRes.json();
-      const cleanBase64 = fileData.content.replace(/\s/g, '');
-      const members = JSON.parse(atob(cleanBase64));
-      
-      const norm = s => String(s || '').replace(/\/+$/, '').toLowerCase();
-      const newSite = norm(entry.website);
-      const existingIndex = existingSite
-        ? members.findIndex(m => norm(m.website) === norm(existingSite))
-        : -1;
+        const collegeKey = 'college:' + pending.emailData.collegeEmail.toLowerCase().trim();
+        const existingMappingRaw = await env.EMAIL_STORE.get(collegeKey);
+        const existingSite = existingMappingRaw ? (JSON.parse(existingMappingRaw).website || null) : null;
 
-      // Prevent a *different* member from registering an already-taken site.
-      const siteTaken = members.some((m, i) => i !== existingIndex && norm(m.website) === newSite);
-      if (siteTaken) {
-        return new Response(JSON.stringify({ success: false, error: 'This website URL is already in the webring!' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        let result;
+        try {
+          result = await finalizeJoin(env, ghHeaders, OWNER, REPO, entry, pending.emailData, existingSite);
+        } catch (err) {
+          await env.EMAIL_STORE.delete(siteKey);
+          return new Response(verifyErrorPage(), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders },
+          });
+        }
+        await env.EMAIL_STORE.delete(siteKey);
+
+        return new Response(verifiedPage(result.prUrl, result.website, url.origin), {
+          headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders },
         });
       }
-
-      const isUpdate = existingIndex >= 0;
-      if (isUpdate) {
-        members[existingIndex] = entry;
-      } else {
-        members.push(entry);
-      }
-
-      // Refresh the college-email → site mapping; drop the old site's email
-      // entry when the member changed their website.
-      await env.EMAIL_STORE.put(collegeKey, JSON.stringify({ website: entry.website }));
-      if (isUpdate && existingSite && norm(existingSite) !== newSite) {
-        await env.EMAIL_STORE.delete(existingSite);
-      }
-
-      const mainRef = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/git/ref/heads/main`, { headers: ghHeaders }).then(r => r.json());
-
-      // 2. Create a new branch
-      await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/git/refs`, {
-        method: 'POST',
-        headers: ghHeaders,
-        body: JSON.stringify({ ref: `refs/heads/${BRANCH_NAME}`, sha: mainRef.object.sha }),
-      });
-
-      // 3. Update members.json on that new branch
-      await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/members.json`, {
-        method: 'PUT',
-        headers: ghHeaders,
-        body: JSON.stringify({
-          message: `${isUpdate ? 'Update' : 'Add'} ${entry.name} ${isUpdate ? 'in' : 'to'} webring`,
-          content: btoa(JSON.stringify(members, null, 2)),
-          sha: fileData.sha,
-          branch: BRANCH_NAME,
-        }),
-      });
-
-      // 4. Add the member's city to data/cities.json when it's new
-      const cityKey = entry.location.toLowerCase().trim();
-      if (cityKey) {
-        try {
-          const citiesRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/cities.json`, { headers: ghHeaders });
-          if (citiesRes.ok) {
-            const citiesFile = await citiesRes.json();
-            const cities = JSON.parse(atob(citiesFile.content.replace(/\s/g, '')));
-            if (!cities[cityKey]) {
-              const geo = await geocodeLocation(entry.location);
-              if (geo) {
-                cities[cityKey] = geo;
-                await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/data/cities.json`, {
-                  method: 'PUT',
-                  headers: ghHeaders,
-                  body: JSON.stringify({
-                    message: `Add ${geo.name} to cities`,
-                    content: btoa(JSON.stringify(cities, null, 2)),
-                    sha: citiesFile.sha,
-                    branch: BRANCH_NAME,
-                  }),
-                });
-              }
-            }
-          }
-        } catch (err) {
-          // cities update is best-effort; the member entry still succeeds
-        }
-      }
-
-      // 5. Open the PR
-      const prRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/pulls`, {
-        method: 'POST',
-        headers: ghHeaders,
-        body: JSON.stringify({
-          title: `${isUpdate ? 'Update request' : 'Join request'}: ${entry.name}`,
-          head: BRANCH_NAME,
-          base: 'main',
-          body: `Automated ${isUpdate ? 'update' : 'join'} request.\n\n${JSON.stringify(entry, null, 2)}`,
-        }),
-      });
-      const pr = await prRes.json();
-
-      return new Response(JSON.stringify({ success: true, prUrl: pr.html_url }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
     } catch (err) {
       return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
+        status: err.status || 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
