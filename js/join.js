@@ -16,19 +16,29 @@
   const submitBtn = document.getElementById('joinSubmit');
   const output = document.getElementById('output');
   const locationInput = document.getElementById('location');
-  const locationPicker = locationInput ? locationInput.closest('.join-location') : null;
   const locationMenu = document.getElementById('locationMenu');
   const locationList = document.getElementById('locationList');
   const locationEmpty = document.getElementById('locationEmpty');
+  const programInput = document.getElementById('program');
+  const programMenu = document.getElementById('programMenu');
+  const programList = document.getElementById('programList');
+  const programEmpty = document.getElementById('programEmpty');
   let citiesData = null;
-  let activeIndex = -1;
+  let programsData = null;
 
-  // ── City / town autocomplete (from data/cities.json) ──
+  // ── Autocomplete dropdowns (city / town + program) ──
   function populateCities() {
     return fetch('data/cities.json')
       .then(function (r) { return r.json(); })
       .then(function (cities) { citiesData = cities || {}; })
       .catch(function () { citiesData = {}; });
+  }
+
+  function populatePrograms() {
+    return fetch('data/programs.json')
+      .then(function (r) { return r.json(); })
+      .then(function (programs) { programsData = Array.isArray(programs) ? programs : []; })
+      .catch(function () { programsData = []; });
   }
 
   function effectiveLocation() {
@@ -43,7 +53,7 @@
       const name = c.name || key;
       if (key.indexOf(q) === 0 || name.toLowerCase().indexOf(q) !== -1 ||
           String(c.state || '').toLowerCase().indexOf(q) !== -1) {
-        out.push({ key: key, name: name, state: c.state || '' });
+        out.push({ name: name, note: c.state || '' });
       }
     });
     out.sort(function (a, b) {
@@ -55,82 +65,200 @@
     return out.slice(0, 14);
   }
 
-  function openMenu() { if (locationMenu) locationMenu.hidden = false; }
+  // True when `token` starts at the beginning of the name or of a word
+  // inside it, so "M" doesn't match "coMputer" or "inforMation".
+  function wordMatch(lower, token) {
+    if (lower.indexOf(token) === 0) return true;
+    let idx = lower.indexOf(token);
+    while (idx !== -1) {
+      const before = lower[idx - 1];
+      if (before === ' ' || before === '(' || before === '-') return true;
+      idx = lower.indexOf(token, idx + 1);
+    }
+    return false;
+  }
 
-  function closeMenu() {
-    if (locationMenu) locationMenu.hidden = true;
-    activeIndex = -1;
-    if (locationList) {
-      locationList.querySelectorAll('.join-location-item').forEach(function (el) {
-        el.classList.remove('is-active');
+  function matchPrograms(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const tokens = q.split(/\s+/);
+    let out = (programsData || []).filter(function (p) {
+      const lower = p.toLowerCase();
+      return tokens.every(function (t) { return wordMatch(lower, t); });
+    });
+    // Fall back to a loose substring match if nothing matched at word starts.
+    if (!out.length) {
+      out = (programsData || []).filter(function (p) {
+        return tokens.every(function (t) { return p.toLowerCase().indexOf(t) !== -1; });
+      });
+    }
+    out.sort(function (a, b) {
+      const al = a.toLowerCase(), bl = b.toLowerCase();
+      const ap = al.indexOf(q) === 0, bp = bl.indexOf(q) === 0;
+      if (ap && !bp) return -1;
+      if (bp && !ap) return 1;
+      return al.localeCompare(bl);
+    });
+    return out.slice(0, 14).map(function (p) { return { name: p, note: '' }; });
+  }
+
+  // Builds one dropdown: typing filters results, arrows move, Enter
+  // selects, Escape/mousedown-outside closes.
+  function attachAutocomplete(opts) {
+    const input = opts.input;
+    const menu = opts.menu;
+    const list = opts.list;
+    const empty = opts.empty;
+    const match = opts.match;
+    const picker = input.parentElement;
+    let current = [];
+    let activeIndex = -1;
+
+    function openMenu() { if (menu) menu.hidden = false; }
+
+    function closeMenu() {
+      if (menu) menu.hidden = true;
+      activeIndex = -1;
+      if (list) {
+        list.querySelectorAll('.join-location-item').forEach(function (el) {
+          el.classList.remove('is-active');
+        });
+      }
+    }
+
+    function selectItem(item) {
+      input.value = item.name;
+      closeMenu();
+      setFieldError(input, '');
+    }
+
+    function renderResults(query) {
+      if (!list) return;
+      current = match(query);
+      list.textContent = '';
+      if (empty) empty.hidden = current.length > 0;
+      activeIndex = -1;
+      current.forEach(function (r, i) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'join-location-item';
+        item.setAttribute('role', 'option');
+        const name = document.createElement('span');
+        name.textContent = r.name;
+        item.dataset.index = i;
+        item.appendChild(name);
+        if (r.note) {
+          const note = document.createElement('small');
+          note.textContent = r.note;
+          item.appendChild(note);
+        }
+        // mousedown (with preventDefault) beats input blur so the selection registers.
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          selectItem(r);
+        });
+        list.appendChild(item);
+      });
+      openMenu();
+    }
+
+    function setActive(i) {
+      const items = list ? list.querySelectorAll('.join-location-item') : [];
+      if (!items.length) return;
+      if (i < 0) i = items.length - 1;
+      if (i >= items.length) i = 0;
+      activeIndex = i;
+      items.forEach(function (el, idx) {
+        el.classList.toggle('is-active', idx === i);
+      });
+      items[i].scrollIntoView({ block: 'nearest' });
+    }
+
+    input.addEventListener('input', function () {
+      setFieldError(input, '');
+      const v = input.value.trim();
+      if (!v) closeMenu();
+      else renderResults(v);
+    });
+
+    input.addEventListener('keydown', function (e) {
+      const menuOpen = menu && !menu.hidden;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!menuOpen && input.value.trim()) renderResults(input.value);
+        setActive(activeIndex + 1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!menuOpen && input.value.trim()) renderResults(input.value);
+        setActive(activeIndex - 1);
+      } else if (e.key === 'Enter') {
+        if (!menuOpen) return;
+        const items = list.querySelectorAll('.join-location-item');
+        if (activeIndex >= 0 && items[activeIndex]) {
+          e.preventDefault();
+          selectItem(current[activeIndex]);
+        } else {
+          closeMenu();
+        }
+      } else if (e.key === 'Escape') {
+        closeMenu();
+      }
+    });
+
+    if (picker) {
+      document.addEventListener('mousedown', function (e) {
+        if (!picker.contains(e.target)) closeMenu();
       });
     }
   }
 
-  function selectCity(city) {
-    locationInput.value = city.name;
-    closeMenu();
-    setFieldError(locationInput, '');
-  }
-
-  function renderResults(query) {
-    if (!locationList) return;
-    const results = matchCities(query);
-    locationList.textContent = '';
-    if (locationEmpty) locationEmpty.hidden = results.length > 0;
-    activeIndex = -1;
-    results.forEach(function (r) {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'join-location-item';
-      item.setAttribute('role', 'option');
-      const name = document.createElement('span');
-      name.textContent = r.name;
-      const state = document.createElement('small');
-      state.textContent = r.state;
-      item.dataset.key = r.key;
-      item.appendChild(name);
-      item.appendChild(state);
-      // mousedown (with preventDefault) beats input blur so the selection registers.
-      item.addEventListener('mousedown', function (e) {
-        e.preventDefault();
-        selectCity(r);
-      });
-      locationList.appendChild(item);
+  if (locationInput) {
+    attachAutocomplete({
+      input: locationInput,
+      menu: locationMenu,
+      list: locationList,
+      empty: locationEmpty,
+      match: matchCities,
     });
-    openMenu();
   }
-
-  function setActive(i) {
-    const items = locationList.querySelectorAll('.join-location-item');
-    if (!items.length) return;
-    if (i < 0) i = items.length - 1;
-    if (i >= items.length) i = 0;
-    activeIndex = i;
-    items.forEach(function (el, idx) {
-      el.classList.toggle('is-active', idx === i);
+  if (programInput) {
+    attachAutocomplete({
+      input: programInput,
+      menu: programMenu,
+      list: programList,
+      empty: programEmpty,
+      match: matchPrograms,
     });
-    items[i].scrollIntoView({ block: 'nearest' });
   }
+  populateCities();
+  populatePrograms();
 
   // ── Widget snippet ────────────────────────────────────
   // Self-contained HTML a member can paste into their footer.
   // `ring` is the ring's origin, `site` is the member's own URL.
+  // The 1x1 pixel pings the worker so the ring can confirm the
+  // widget is actually installed on the member's site.
   function buildWidgetSnippet(ring, site) {
     const base = (ring || location.origin).replace(/\/$/, '');
     return [
       '<!-- SRM NCR WebRing widget -->',
       '<div class="srm-ring-widget">',
       '  <a href="' + base + '/#' + site + '?nav=prev" class="srm-ring-arrow">&larr;</a>',
-      '  <a href="' + base + '/" class="srm-ring-logo">SRM<sup>NCR</sup></a>',
+      '  <a href="' + base + '/" class="srm-ring-logo">',
+      '    <img src="' + base + '/img/tree_yellow.png" alt="SRM NCR WebRing" width="16" height="16">',
+      '    <span>SRM<sup>NCR</sup></span>',
+      '  </a>',
       '  <a href="' + base + '/#' + site + '?nav=next" class="srm-ring-arrow">&rarr;</a>',
       '</div>',
+      '<img src="' + API + '/widget?site=' + encodeURIComponent(site) + '" width="1" height="1" alt="" style="border:0" aria-hidden="true">',
       '<style>',
       '.srm-ring-widget{display:inline-flex;align-items:center;gap:.6rem;padding:.5rem .9rem;',
       'border:1px solid rgba(12,77,162,.35);border-radius:999px;background:#fff;',
       'box-shadow:0 1px 3px rgba(0,0,0,.08)}',
       '.srm-ring-arrow{text-decoration:none;font-weight:700;font-size:1.1rem;color:#0c4da2;line-height:1}',
-      '.srm-ring-logo{text-decoration:none;font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem}',
+      '.srm-ring-logo{display:inline-flex;align-items:center;gap:.3rem;text-decoration:none;',
+      'font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem;line-height:1}',
+      '.srm-ring-logo img{width:16px;height:16px}',
       '.srm-ring-logo sup{font-size:.6em}',
       '</style>',
     ].join('\n');
@@ -171,14 +299,6 @@
     document.body.removeChild(ta);
   }
 
-  // Fill the on-page widget preview once, from the current origin.
-  var widgetCode = document.getElementById('widgetCode');
-  var widgetCopyBtn = document.getElementById('widgetCopyBtn');
-  if (widgetCode && widgetCopyBtn) {
-    widgetCode.textContent = buildWidgetSnippet(location.origin, 'https://your-site.example');
-    attachCopy(widgetCopyBtn, widgetCode);
-  }
-
   // ── Badge upload preview ──
   if (badgeInput && badgePreview) {
     badgeInput.addEventListener('change', function () {
@@ -190,44 +310,6 @@
       }
     });
   }
-
-  if (locationInput) {
-    locationInput.addEventListener('input', function () {
-      setFieldError(locationInput, '');
-      const v = locationInput.value.trim();
-      if (!v) closeMenu();
-      else renderResults(v);
-    });
-    locationInput.addEventListener('keydown', function (e) {
-      const menuOpen = locationMenu && !locationMenu.hidden;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (!menuOpen && locationInput.value.trim()) renderResults(locationInput.value);
-        setActive(activeIndex + 1);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (!menuOpen && locationInput.value.trim()) renderResults(locationInput.value);
-        setActive(activeIndex - 1);
-      } else if (e.key === 'Enter') {
-        if (!menuOpen) return;
-        const items = locationList.querySelectorAll('.join-location-item');
-        if (activeIndex >= 0 && items[activeIndex]) {
-          e.preventDefault();
-          selectCity(citiesData[items[activeIndex].dataset.key]);
-        } else {
-          closeMenu();
-        }
-      } else if (e.key === 'Escape') {
-        closeMenu();
-      }
-    });
-  }
-  if (locationPicker) {
-    document.addEventListener('mousedown', function (e) {
-      if (!locationPicker.contains(e.target)) closeMenu();
-    });
-  }
-  populateCities();
 
   // ── Custom validation (replaces browser default bubbles) ──
   function emailValid(value) {
@@ -331,7 +413,9 @@
     check(gradDateInput, gradError);
 
     const college = document.getElementById('collegeEmail');
-    check(college, emailValid(college.value.trim()) ? '' : 'Enter a valid college email.');
+    const collegePrefix = college.value.trim();
+    const collegeFull = collegePrefix + '@srmist.edu.in';
+    check(college, /^[a-z0-9._%+-]+$/i.test(collegePrefix) && emailValid(collegeFull) ? '' : 'Enter your SRM^NCR username (e.g. sn1234).');
     const personal = document.getElementById('personalEmail');
     check(personal, emailValid(personal.value.trim()) ? '' : 'Enter a valid email.');
 
@@ -353,26 +437,88 @@
     }
   });
 
+  // ── Stepwise onboarding (UniHaul-style: segmented bars, panels
+  // that slide in from the right, step title + description under the bar) ──
+  const stepIndicator = document.getElementById('stepIndicator');
+  const stepTitle = document.getElementById('stepTitle');
+  const stepDesc = document.getElementById('stepDesc');
+  const stepBars = Array.prototype.slice.call(
+    (document.getElementById('stepBars') || document).querySelectorAll('span')
+  );
+  const panels = Array.prototype.slice.call(document.querySelectorAll('.onboard-panel'));
+  const heading = document.querySelector('.onboard-heading');
+
+  const STEP_COPY = {
+    1: {
+      title: 'Your details',
+      desc: 'Tell us about your site. We send a one-time verification link to your college email before anything goes live.',
+    },
+    2: {
+      title: 'Check your inbox',
+      desc: 'We sent a one-time link to your college email. Open it and click \u201cVerify my college email\u201d \u2014 your pull request opens the moment you do.',
+    },
+    3: {
+      title: 'You\u2019re in \u2014 add the widget',
+      desc: 'Paste this just before </body> on your homepage. The hidden pixel tells the ring you\u2019ve installed it; the navigation arrows link you into the ring.',
+    },
+  };
+
+  // Entrance animations run only on step changes, never on first load.
+  function replayAnim(el) {
+    if (!el) return;
+    el.classList.remove('is-animating');
+    void el.offsetWidth;
+    el.classList.add('is-animating');
+  }
+
+  function goToStep(n, animate) {
+    stepBars.forEach(function (bar, i) {
+      bar.classList.toggle('is-fill', i < n);
+    });
+    panels.forEach(function (panel, i) {
+      panel.classList.toggle('is-active', i === n - 1);
+    });
+    if (stepIndicator) stepIndicator.textContent = 'Step ' + n;
+    if (stepTitle) stepTitle.textContent = STEP_COPY[n].title;
+    if (stepDesc) stepDesc.textContent = STEP_COPY[n].desc;
+    if (animate) {
+      replayAnim(panels[n - 1]);
+      replayAnim(heading);
+    }
+  }
+
+  goToStep(1);
+
   // ── Submit: multipart POST to the backend worker ──
-  form.addEventListener('submit', function (event) {
-    event.preventDefault();
+  // Step 1 only — the worker emails a verification link; the PR is
+  // opened when the user clicks it in their college inbox.
+  let submittedForm = null;
 
-    if (!validate()) return;
-
+  function buildFormData() {
     const form = new FormData();
     form.append('name', document.getElementById('name').value.trim());
     form.append('website', document.getElementById('website').value.trim());
     form.append('program', document.getElementById('program').value.trim());
-    form.append('gradDate', gradDateInput.value);
-    form.append('collegeEmail', document.getElementById('collegeEmail').value.trim());
+    // Date inputs report yyyy-mm-dd; store as DD/MM/YYYY.
+    const gradRaw = gradDateInput.value;
+    let gradSent = gradRaw;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(gradRaw)) {
+      const parts = gradRaw.split('-');
+      gradSent = parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+    form.append('gradDate', gradSent);
+    form.append('collegeEmail', document.getElementById('collegeEmail').value.trim() + '@srmist.edu.in');
     form.append('personalEmail', document.getElementById('personalEmail').value.trim());
     form.append('badgeFile', badgeInput.files[0]);
     form.append('location', effectiveLocation());
+    return form;
+  }
 
+  function submitJoin() {
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting\u2026';
+    submitBtn.textContent = 'Sending link\u2026';
 
-    fetch(API, { method: 'POST', body: form })
+    fetch(API + '/join', { method: 'POST', body: submittedForm })
       .then(function (response) {
         return response.json().then(function (data) {
           return { ok: response.ok, data: data };
@@ -381,48 +527,12 @@
       .then(function (result) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit request';
-        if (result.ok && result.data.success && result.data.prUrl) {
-          const el = document.createElement('div');
-
-          const line = document.createElement('div');
-          line.textContent = 'Submitted! Your pull request is waiting for review.';
-          el.appendChild(line);
-
-          const link = document.createElement('a');
-          link.href = result.data.prUrl;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.textContent = 'View pull request \u2192';
-          el.appendChild(link);
-
-          const widgetHeading = document.createElement('p');
-          widgetHeading.style.marginTop = '1rem';
-          widgetHeading.style.marginBottom = '0.25rem';
-          widgetHeading.textContent = 'While you wait, drop this into your footer:';
-          el.appendChild(widgetHeading);
-
-          const snippetCode = document.createElement('code');
-          snippetCode.style.display = 'block';
-          snippetCode.style.whiteSpace = 'pre-wrap';
-          snippetCode.style.wordBreak = 'break-all';
-          snippetCode.style.fontFamily = 'var(--font-mono)';
-          snippetCode.style.fontSize = '0.72rem';
-          snippetCode.style.padding = '0.75rem';
-          snippetCode.style.background = 'rgba(0,0,0,.25)';
-          snippetCode.style.borderRadius = '6px';
-          snippetCode.textContent = buildWidgetSnippet(location.origin, document.getElementById('website').value.trim());
-          el.appendChild(snippetCode);
-
-          const copyBtn = document.createElement('button');
-          copyBtn.type = 'button';
-          copyBtn.className = 'widget-copy';
-          copyBtn.style.position = 'static';
-          copyBtn.style.marginTop = '0.5rem';
-          copyBtn.textContent = 'Copy code';
-          attachCopy(copyBtn, snippetCode);
-          el.appendChild(copyBtn);
-
-          showStatus(el, false);
+        if (result.ok && result.data.pending) {
+          goToStep(2, true);
+          showPending(result.data.message);
+        } else if (result.ok && result.data.success && result.data.prUrl) {
+          goToStep(3, true);
+          showSuccess(result.data.prUrl);
         } else {
           showStatus(result.data.error || 'Something went wrong. Please try again.', true);
         }
@@ -432,7 +542,124 @@
         submitBtn.textContent = 'Submit request';
         showStatus('Network error: ' + error.message, true);
       });
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (!validate()) return;
+    submittedForm = buildFormData();
+    submitJoin();
   });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function showPending(message) {
+    const verifyContent = document.getElementById('verifyContent');
+    verifyContent.textContent = '';
+    const el = document.createElement('div');
+    el.className = 'onboard-flow';
+
+    const collegeEmail = document.getElementById('collegeEmail').value.trim() + '@srmist.edu.in';
+    const line = document.createElement('p');
+    line.innerHTML = message
+      ? escapeHtml(message)
+      : 'Verification link sent to <strong>' + escapeHtml(collegeEmail) + '</strong>.';
+    el.appendChild(line);
+
+    const steps = document.createElement('ul');
+    steps.className = 'onboard-checklist';
+    ['Open the email from the ring bot', 'Click <strong>Verify my college email</strong>', 'Your pull request opens automatically'].forEach(function (text) {
+      const li = document.createElement('li');
+      li.innerHTML = text;
+      steps.appendChild(li);
+    });
+    el.appendChild(steps);
+
+    const actions = document.createElement('div');
+    actions.className = 'onboard-actions';
+
+    const verifiedBtn = document.createElement('button');
+    verifiedBtn.type = 'button';
+    verifiedBtn.className = 'join-submit';
+    verifiedBtn.textContent = 'I\u2019ve verified \u2014 show my widget code';
+    verifiedBtn.addEventListener('click', function () {
+      goToStep(3, true);
+      showSuccess(null);
+    });
+    actions.appendChild(verifiedBtn);
+
+    const resend = document.createElement('button');
+    resend.type = 'button';
+    resend.className = 'onboard-link';
+    resend.textContent = 'Resend link';
+    resend.addEventListener('click', function () {
+      if (submittedForm) submitJoin();
+    });
+    actions.appendChild(resend);
+
+    el.appendChild(actions);
+    verifyContent.appendChild(el);
+  }
+
+  function showSuccess(prUrl) {
+    const successContent = document.getElementById('successContent');
+    successContent.textContent = '';
+    const el = document.createElement('div');
+
+    const line = document.createElement('p');
+    line.innerHTML = 'Verified! Your entry is a pull request, waiting for review.';
+    el.appendChild(line);
+
+    if (prUrl) {
+      const link = document.createElement('a');
+      link.href = prUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'View pull request \u2192';
+      link.style.fontWeight = '600';
+      el.appendChild(link);
+    }
+
+    const widgetHeading = document.createElement('p');
+    widgetHeading.style.marginTop = '1.1rem';
+    widgetHeading.style.marginBottom = '0.4rem';
+    widgetHeading.style.fontWeight = '700';
+    widgetHeading.textContent = 'Paste this into your footer, just before </body>:';
+    el.appendChild(widgetHeading);
+
+    const snippetCode = document.createElement('code');
+    snippetCode.style.display = 'block';
+    snippetCode.style.whiteSpace = 'pre-wrap';
+    snippetCode.style.wordBreak = 'break-all';
+    snippetCode.style.fontFamily = 'var(--font-mono)';
+    snippetCode.style.fontSize = '0.72rem';
+    snippetCode.style.padding = '0.75rem';
+    snippetCode.style.background = 'rgba(0,0,0,.18)';
+    snippetCode.style.borderRadius = '6px';
+    snippetCode.style.border = '1px solid var(--border)';
+    snippetCode.textContent = buildWidgetSnippet(location.origin, document.getElementById('website').value.trim());
+    el.appendChild(snippetCode);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'widget-copy';
+    copyBtn.style.position = 'static';
+    copyBtn.style.marginTop = '0.5rem';
+    copyBtn.textContent = 'Copy code';
+    attachCopy(copyBtn, snippetCode);
+    el.appendChild(copyBtn);
+
+    const note = document.createElement('p');
+    note.className = 'onboard-note';
+    note.textContent = 'Keep the 1x1 pixel in the snippet — it proves the widget is installed. If it goes missing, a bot emails you after 21 days and removes your entry after 30.';
+    el.appendChild(note);
+
+    successContent.appendChild(el);
+  }
 
   function showStatus(message, isError) {
     output.textContent = '';

@@ -21,75 +21,105 @@
         <a href="index.html" class="back-link">&larr; Back to ring</a>
 
         <h1>Join<br>the <span class="h1-accent">ring.</span></h1>
-        <p>Build a portfolio site, drop our widget into your footer, and submit this form. Your entry is turned into a pull request automatically and merged once it's approved.</p>
+        <p>Build a portfolio site, submit this form, and drop our widget into your footer. Your entry is turned into a pull request automatically and merged once it's approved.</p>
 
-        <!-- Widget snippet: pre-filled embed code members paste into their site footer -->
-        <section id="widget" class="widget-section">
-            <h2>Your widget code</h2>
-            <div class="widget-code">
-                <pre><code id="widgetCode" class="language-html"></code></pre>
-                <button type="button" class="widget-copy" id="widgetCopyBtn">Copy code</button>
+        <!-- Step indicator: segmented progress bars, then the step title + description -->
+        <div class="onboard-head">
+            <div class="onboard-bars" id="stepBars" aria-label="Progress">
+                <span></span><span></span><span></span>
             </div>
-        </section>
+        </div>
+        <div class="onboard-heading">
+            <p id="stepIndicator" class="onboard-eyebrow">Step 1</p>
+            <h2 id="stepTitle">Your details</h2>
+            <p id="stepDesc">Tell us about your site. We send a one-time verification link to your college email before anything goes live.</p>
+        </div>
 
-        <!-- ── Join form; validated and submitted to the ring backend by js/join.js ── -->
-        <form id="joinForm" class="join-form" novalidate>
-            <label class="field-full">
-                Name
-                <input type="text" id="name" required>
-            </label>
+        <!-- ── Stepwise card: the step panels ── -->
+        <div class="onboard-card">
+            <div class="onboard-body">
+                <!-- Step 1: the form -->
+                <section class="onboard-panel is-active" id="panel1" aria-live="polite">
+                    <form id="joinForm" class="join-form" novalidate>
+                        <label class="field-full">
+                            Name
+                            <input type="text" id="name" required>
+                        </label>
 
-            <label class="field-full">
-                Website URL
-                <input type="url" id="website" required>
-            </label>
+                        <label class="field-full">
+                            Website URL
+                            <input type="url" id="website" required>
+                        </label>
 
-            <label>
-                Program
-                <input type="text" id="program" required>
-            </label>
+                        <label>
+                            Program
+                            <div class="join-program">
+                                <input type="text" id="program" required autocomplete="off">
+                                <div class="join-location-menu" id="programMenu" hidden>
+                                    <div class="join-location-list" id="programList"></div>
+                                    <p class="join-location-empty" id="programEmpty" hidden>No matching program &mdash; type your own.</p>
+                                </div>
+                            </div>
+                        </label>
 
-            <label>
-                Location
-                <div class="join-location">
-                    <input type="text" id="location" required autocomplete="off">
-                    <div class="join-location-menu" id="locationMenu" hidden>
-                        <div class="join-location-list" id="locationList"></div>
-                        <p class="join-location-empty" id="locationEmpty" hidden>No matching city &mdash; type your own.</p>
-                    </div>
-                </div>
-            </label>
+                        <label>
+                            Location
+                            <div class="join-location">
+                                <input type="text" id="location" required autocomplete="off">
+                                <div class="join-location-menu" id="locationMenu" hidden>
+                                    <div class="join-location-list" id="locationList"></div>
+                                    <p class="join-location-empty" id="locationEmpty" hidden>No matching city &mdash; type your own.</p>
+                                </div>
+                            </div>
+                        </label>
 
-            <label>
-                Graduation Date
-                <input type="text" id="gradDate" required placeholder="DD/MM/YYYY" autocomplete="off">
-            </label>
+                        <label>
+                            Graduation Date
+                            <input type="date" id="gradDate" required autocomplete="off">
+                        </label>
 
-            <label>
-                College Email (private)
-                <input type="email" id="collegeEmail" required placeholder="sn1234@srmist.edu.in">
-            </label>
+                        <label>
+                            College Email (private)
+                            <span class="email-group">
+                                <input type="text" id="collegeEmail" placeholder="sn1234" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+                                <span class="email-suffix">@srmist.edu.in</span>
+                            </span>
+                            <em>Your college email only. We send a verification link to it, and it never goes public.</em>
+                        </label>
 
-            <label class="field-full">
-                Personal Email (private)
-                <input type="email" id="personalEmail" required>
-                <em>Backup contact. Never published.</em>
-            </label>
+                        <label class="field-full">
+                            Personal Email (private)
+                            <input type="email" id="personalEmail" required>
+                            <em>Backup contact. Never published.</em>
+                        </label>
 
-            <div class="field-full join-badge-field">
-                <span class="join-badge-label">Badge Image</span>
-                <div class="join-badge-row">
-                    <img id="badgePreview" class="join-badge-preview is-empty" alt="" aria-hidden="true">
-                    <input type="file" id="badge" aria-label="Badge Image" required accept="image/png,image/gif,image/jpeg">
-                </div>
-                <em>88&times;31 px badge, max 1 MB (PNG, GIF, or JPEG). Need one? <a href="badge.html" class="inline-link badge-link">Make a badge here</a>.</em>
+                        <div class="field-full join-badge-field">
+                            <span class="join-badge-label">Badge Image</span>
+                            <div class="join-badge-row">
+                                <img id="badgePreview" class="join-badge-preview is-empty" alt="" aria-hidden="true">
+                                <input type="file" id="badge" aria-label="Badge Image" required accept="image/png,image/gif,image/jpeg">
+                            </div>
+                            <em>88&times;31 px badge, max 1 MB (PNG, GIF, or JPEG). Need one? <a href="badge.html" class="inline-link badge-link">Make a badge here</a>.</em>
+                        </div>
+
+                        <button type="submit" class="join-submit" id="joinSubmit">Submit request</button>
+                    </form>
+
+                    <!-- Submission errors (populated by js/join.js) -->
+                    <div id="output" class="join-status" role="status"></div>
+                </section>
+
+                <!-- Step 2: check the college inbox -->
+                <section class="onboard-panel" id="panel2" aria-live="polite">
+                    <div id="verifyContent"></div>
+                </section>
+
+                <!-- Step 3: paste the widget -->
+                <section class="onboard-panel" id="panel3" aria-live="polite">
+                    <div id="successContent"></div>
+                </section>
             </div>
-
-            <button type="submit" class="join-submit" id="joinSubmit">Submit request</button>
-        </form>
-
-        <!-- Submission status (populated by js/join.js) -->
-        <div id="output" class="join-status" role="status"></div>
+        </div>
     </main>
 
     <script src="js/join.js"></script>
