@@ -32,8 +32,15 @@
   const DRAFT_KEY = 'srm-join-draft';
   const DRAFT_FIELDS = ['name', 'website', 'program', 'location', 'gradDate', 'collegeEmail', 'personalEmail'];
 
+  function currentStep() {
+    const active = document.querySelector('.onboard-panel.is-active');
+    const panels = Array.prototype.slice.call(document.querySelectorAll('.onboard-panel'));
+    const idx = active ? panels.indexOf(active) : -1;
+    return idx >= 0 ? idx + 1 : 1;
+  }
+
   function saveDraft() {
-    const data = {};
+    const data = { step: currentStep() };
     DRAFT_FIELDS.forEach(function (id) {
       const el = document.getElementById(id);
       if (el) data[id] = el.value;
@@ -44,19 +51,21 @@
   function restoreDraft() {
     try {
       const data = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
-      if (!data) return;
+      if (!data) return 1;
       DRAFT_FIELDS.forEach(function (id) {
         const el = document.getElementById(id);
         if (el && data[id] != null) el.value = data[id];
       });
-    } catch (e) { /* noop */ }
+      const n = parseInt(data.step, 10);
+      return n >= 1 && n <= 3 ? n : 1;
+    } catch (e) { return 1; }
   }
 
   function clearDraft() {
     try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) { /* noop */ }
   }
 
-  restoreDraft();
+  const savedStep = restoreDraft();
   form.addEventListener('input', saveDraft);
   form.addEventListener('change', saveDraft);
 
@@ -514,10 +523,10 @@
     },
     2: {
       title: 'Check your inbox',
-      desc: 'We sent a one-time link to your college email. Open it and click \u201cVerify my college email\u201d \u2014 your pull request opens the moment you do.',
+      desc: 'We sent a one-time link to your college email. Open it and click \u201cVerify my college email\u201d, your pull request opens the moment you do.',
     },
     3: {
-      title: 'You\u2019re in \u2014 add the widget',
+      title: 'You\u2019re in, add the widget',
       desc: 'Paste this just before </body> on your homepage. The hidden pixel tells the ring you\u2019ve installed it; the navigation arrows link you into the ring.',
     },
   };
@@ -544,9 +553,14 @@
       replayAnim(panels[n - 1]);
       replayAnim(heading);
     }
+    saveDraft();
   }
 
-  goToStep(1);
+  // Restore the saved step (and re-render step 2/3 content) so a refresh
+  // keeps the user where they were.
+  goToStep(savedStep, false);
+  if (savedStep === 2) showPending(null);
+  else if (savedStep === 3) showSuccess(null);
 
   // ── Submit: multipart POST to the backend worker ──
   // Step 1 only — the worker emails a verification link; the PR is
@@ -586,7 +600,6 @@
       .then(function (result) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit request';
-        if (result.ok) clearDraft();
         if (result.ok && result.data.pending) {
           goToStep(2, true);
           showPending(result.data.message);
@@ -645,7 +658,7 @@
     const verifiedBtn = document.createElement('button');
     verifiedBtn.type = 'button';
     verifiedBtn.className = 'join-submit';
-    verifiedBtn.textContent = 'I\u2019ve verified \u2014 show my widget code';
+    verifiedBtn.textContent = 'I\u2019ve verified. Show my widget code';
     verifiedBtn.addEventListener('click', function () {
       goToStep(3, true);
       showSuccess(null);
@@ -660,6 +673,16 @@
       if (submittedForm) submitJoin();
     });
     actions.appendChild(resend);
+
+    const restart = document.createElement('button');
+    restart.type = 'button';
+    restart.className = 'onboard-link';
+    restart.textContent = 'Start over';
+    restart.addEventListener('click', function () {
+      clearDraft();
+      location.reload();
+    });
+    actions.appendChild(restart);
 
     el.appendChild(actions);
     verifyContent.appendChild(el);
@@ -715,8 +738,18 @@
 
     const note = document.createElement('p');
     note.className = 'onboard-note';
-    note.textContent = 'Keep the 1x1 pixel in the snippet — it proves the widget is installed. If it goes missing, a bot emails you after 21 days and removes your entry after 30.';
+    note.textContent = 'Keep the 1x1 pixel in the snippet, it proves the widget is installed. If it goes missing, a bot emails you after 21 days and removes your entry after 30.';
     el.appendChild(note);
+
+    const restart = document.createElement('button');
+    restart.type = 'button';
+    restart.className = 'onboard-link';
+    restart.textContent = 'Start over';
+    restart.addEventListener('click', function () {
+      clearDraft();
+      location.reload();
+    });
+    el.appendChild(restart);
 
     successContent.appendChild(el);
   }
