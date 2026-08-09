@@ -114,23 +114,15 @@ function httpError(message, status = 500) {
 
 async function sendVerifyEmail(env, to, name, verifyUrl) {
         const senderEmail = env.SENDER_EMAIL;
-  const htmlContent = `
-    <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
-      <div style="text-align: center; margin-bottom: 18px;">
-        <img src="https://io-PEAK.github.io/srm-ncr-webring/img/tree_yellow.png" alt="SRM NCR WebRing" style="width: 48px; height: 44px;">
-        <h2 style="color: #c8a008; margin: 10px 0 0; font-size: 1.35rem;">SRM<sup>NCR</sup> WebRing</h2>
-        <p style="color: #6fb3ff; margin: 4px 0 0; font-size: 0.8rem;">Email Verification</p>
-      </div>
-      <p>Hi <strong>${escapeHtml(name)}</strong>,</p>
-      <p>You submitted a request to join the SRM NCR WebRing. To confirm this SRM NCR email address belongs to you, click the button below:</p>
-      <p style="text-align: center; margin: 28px 0;">
-        <a href="${verifyUrl}" style="display: inline-block; padding: 12px 26px; background-color: #0c4da2; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 700;">Verify my college email</a>
-      </p>
-      <p style="color: #aaa;">Or open this link: <a href="${verifyUrl}" style="color: #6fb3ff; word-break: break-all;">${verifyUrl}</a></p>
-      <p>This link expires in 1 hour and can only be used once. If you didn't make this request, you can ignore this email.</p>
-      <p>Best regards,<br>SRM NCR WebRing Bot</p>
-    </div>
-  `;
+  const htmlContent = emailShell('Email Verification', `
+    <p>Hi <strong>${escapeHtml(name)}</strong>,</p>
+    <p>You submitted a request to join the SRM NCR WebRing. To confirm this SRM NCR email address belongs to you, click the button below:</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${verifyUrl}" style="display:inline-block;padding:12px 28px;background:#0c4da2;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;">Verify my college email</a>
+    </p>
+    ${emailCallout('#0c4da2', 'Your verification link is valid for <strong>1 hour</strong> and works only once.')}
+    <p style="color:#7a8aa5;font-size:.85rem;word-break:break-all;">Or open this link: <a href="${verifyUrl}" style="color:#6fb3ff;">${verifyUrl}</a></p>
+  `);
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -171,6 +163,31 @@ function pageShell(title, bodyHtml, linkHtml) {
   </div>
 </body>
 </html>`;
+}
+
+// Shared notification email layout: centered tree logo header, clean
+// typography, and a muted footer. Fully inline-styled because most
+// email clients strip <style> tags. The styled name SRM<sup>NCR</sup>
+// is kept only in the header; body copy uses plain "SRM NCR".
+function emailShell(title, bodyHtml) {
+  return `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0b0e14;padding:24px;">
+      <div style="max-width:520px;margin:0 auto;background:#141a24;border:1px solid #2a3446;border-radius:12px;padding:32px;color:#aab6c8;font-size:.95rem;line-height:1.55;">
+        <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid #2a3446;margin-bottom:24px;">
+          <img src="https://io-PEAK.github.io/srm-ncr-webring/img/tree_yellow.png" alt="SRM NCR WebRing" style="width:52px;height:47px;display:block;margin:0 auto;">
+          <h2 style="color:#c8a008;margin:12px 0 0;font-size:1.3rem;font-weight:700;">SRM<sup>NCR</sup> WebRing</h2>
+          <p style="color:#6fb3ff;margin:6px 0 0;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;">${title}</p>
+        </div>
+        ${bodyHtml}
+        <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #2a3446;color:#5a6a85;font-size:.78rem;line-height:1.5;">You received this email because your site is a member of the SRM NCR WebRing. If you didn't expect this, you can ignore it.</p>
+      </div>
+    </div>
+  `;
+}
+
+// A highlighted box for key warnings inside an email body.
+function emailCallout(color, html) {
+  return `<div style="background:#1b2130;border:1px solid ${color};border-left:4px solid ${color};border-radius:6px;padding:14px 16px;margin:20px 0;">${html}</div>`;
 }
 
 function verifiedPage(prUrl, website, pixelBase) {
@@ -655,69 +672,45 @@ export default {
   const senderEmail = env.SENDER_EMAIL;
 
         if (type === 'warning') {
-          subject = '[ACTION REQUIRED] Your site is unreachable — SRM^NCR WebRing';
-          htmlContent = `
-            <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
-              <h2 style="color: #6fb3ff; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Alert</h2>
-              <p>Hi <strong>${recipientName}</strong>,</p>
-              <p>During our automated checks, we were unable to reach your website: <a href="${site}" style="color: #6fb3ff;">${site}</a>.</p>
-              <p>Your site has been marked as <strong>hidden</strong> and is temporarily excluded from the WebRing navigation and directory to keep things running smoothly for visitors.</p>
-              <div style="background-color: #222; border-left: 4px solid #ffcc00; padding: 15px; margin: 20px 0;">
-                <strong>[WARNING]</strong> Your site has been down for <strong>10 days</strong>. If it remains unreachable for 5 more days (15 days total), your entry will be permanently removed from the WebRing.
-              </div>
-              <p>Once your website is back online, our 3-day health check will automatically restore your site to the active ring. No manual action is needed.</p>
-              <p>Best regards,<br>SRM^NCR WebRing Bot</p>
-            </div>
-          `;
+          subject = '[ACTION REQUIRED] Your site is unreachable, SRM NCR WebRing';
+          htmlContent = emailShell('Site down warning', `
+            <p>Hi <strong>${recipientName}</strong>,</p>
+            <p>During our automated checks, we were unable to reach your website: <a href="${site}" style="color:#6fb3ff;">${site}</a>.</p>
+            <p>Your site has been marked as <strong>hidden</strong> and is temporarily excluded from the WebRing navigation and directory to keep things running smoothly for visitors.</p>
+            ${emailCallout('#ffcc00', '<strong>[WARNING]</strong> Your site has been down for <strong>10 days</strong>. If it remains unreachable for 5 more days (15 days total), your entry will be permanently removed from the WebRing.')}
+            <p>Once your website is back online, our 3-day health check will automatically restore your site to the active ring. No manual action is needed.</p>
+          `);
         } else if (type === 'removal') {
-          subject = 'Website removed from SRM^NCR WebRing';
-          htmlContent = `
-            <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
-              <h2 style="color: #ff5555; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Update</h2>
-              <p>Hi <strong>${recipientName}</strong>,</p>
-              <p>Your website (<a href="${site}" style="color: #6fb3ff;">${site}</a>) has been unreachable for <strong>15 days</strong>.</p>
-              <p>As per the webring rules, your entry has been permanently removed from the <code>members.json</code> file.</p>
-              <p>If this was a mistake or your site is back up, you are welcome to submit a new join request at the site: <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color: #6fb3ff;">Join Again</a>.</p>
-              <p>Best regards,<br>SRM^NCR WebRing Bot</p>
-            </div>
-          `;
+          subject = 'Website removed from SRM NCR WebRing';
+          htmlContent = emailShell('Membership removed', `
+            <p>Hi <strong>${recipientName}</strong>,</p>
+            <p>Your website (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been unreachable for <strong>15 days</strong>.</p>
+            <p>As per the webring rules, your entry has been permanently removed from <code>members.json</code>.</p>
+            <p>If this was a mistake or your site is back up, you are welcome to submit a new join request at the site: <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color:#6fb3ff;">Join Again</a>.</p>
+          `);
         } else if (type === 'graduation') {
-          subject = 'Congratulations on your graduation! — SRM^NCR WebRing';
-          htmlContent = `
-            <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
-              <h2 style="color: #6fb3ff; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Graduation</h2>
-              <p>Hi <strong>${recipientName}</strong>,</p>
-              <p>Happy graduation! We noticed your graduation date grace period (30 days) has passed.</p>
-              <p>To keep the ring active for current students, your site (<a href="${site}" style="color: #6fb3ff;">${site}</a>) has been automatically removed from the directory.</p>
-              <p>Thank you for being part of the SRM^NCR WebRing community. We wish you all the best in your post-college journey!</p>
-              <p>Best regards,<br>SRM^NCR WebRing Bot</p>
-            </div>
-          `;
+          subject = 'Congratulations on your graduation, SRM NCR WebRing';
+          htmlContent = emailShell('Graduation notice', `
+            <p>Hi <strong>${recipientName}</strong>,</p>
+            <p>Happy graduation! We noticed your graduation date grace period (30 days) has passed.</p>
+            <p>To keep the ring active for current students, your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been automatically removed from the directory.</p>
+            <p>Thank you for being part of the SRM NCR WebRing community. We wish you all the best in your post-college journey!</p>
+          `);
         } else if (type === 'widget-warning') {
-          subject = '[ACTION REQUIRED] Your webring widget is missing — SRM^NCR WebRing';
-          htmlContent = `
-            <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
-              <h2 style="color: #ffcc00; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Alert</h2>
-              <p>Hi <strong>${recipientName}</strong>,</p>
-              <p>Your site (<a href="${site}" style="color: #6fb3ff;">${site}</a>) is listed in the webring, but our checks can't find the webring widget on it.</p>
-              <div style="background-color: #222; border-left: 4px solid #ffcc00; padding: 15px; margin: 20px 0;">
-                <strong>[WARNING]</strong> The widget is what makes your site part of the ring navigation. If it's still missing in <strong>9 days</strong> (30 days total), your entry will be removed.
-              </div>
-              <p>You can get the code from the join page after verifying your email. Paste it just before <code>&lt;/body&gt;</code> on your homepage.</p>
-              <p>Best regards,<br>SRM^NCR WebRing Bot</p>
-            </div>
-          `;
+          subject = '[ACTION REQUIRED] Your webring widget is missing, SRM NCR WebRing';
+          htmlContent = emailShell('Widget missing warning', `
+            <p>Hi <strong>${recipientName}</strong>,</p>
+            <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) is listed in the webring, but our checks can't find the webring widget on it.</p>
+            ${emailCallout('#ffcc00', '<strong>[WARNING]</strong> The widget is what makes your site part of the ring navigation. If it is still missing in <strong>9 days</strong> (30 days total), your entry will be removed.')}
+            <p>You can get the code from the join page after verifying your email. Paste it just before <code>&lt;/body&gt;</code> on your homepage.</p>
+          `);
         } else if (type === 'widget-removal') {
-          subject = 'Removed from SRM^NCR WebRing — widget missing';
-          htmlContent = `
-            <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
-              <h2 style="color: #ff5555; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Update</h2>
-              <p>Hi <strong>${recipientName}</strong>,</p>
-              <p>Your site (<a href="${site}" style="color: #6fb3ff;">${site}</a>) has not had the webring widget installed for <strong>30 days</strong>, so your entry has been removed from <code>members.json</code>.</p>
-              <p>You're welcome to rejoin anytime — add the widget to your site and submit a new join request at <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color: #6fb3ff;">Join the ring</a>.</p>
-              <p>Best regards,<br>SRM^NCR WebRing Bot</p>
-            </div>
-          `;
+          subject = 'Removed from SRM NCR WebRing, widget missing';
+          htmlContent = emailShell('Widget missing removal', `
+            <p>Hi <strong>${recipientName}</strong>,</p>
+            <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has not had the webring widget installed for <strong>30 days</strong>, so your entry has been removed from <code>members.json</code>.</p>
+            <p>You're welcome to rejoin anytime, add the widget to your site and submit a new join request at <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color:#6fb3ff;">Join the ring</a>.</p>
+          `);
         } else {
           return new Response('Invalid notification type', { status: 400, headers: corsHeaders });
         }
