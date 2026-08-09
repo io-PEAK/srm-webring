@@ -289,7 +289,6 @@
       '  <a href="' + base + '/#' + site + '?nav=prev" class="srm-ring-arrow">&larr;</a>',
       '  <a href="' + base + '/" class="srm-ring-logo">',
       '    <img src="' + base + '/img/tree_yellow.png" alt="SRM NCR WebRing" width="16" height="16">',
-      '    <span>SRM<sup>NCR</sup></span>',
       '  </a>',
       '  <a href="' + base + '/#' + site + '?nav=next" class="srm-ring-arrow">&rarr;</a>',
       '</div>',
@@ -302,7 +301,6 @@
       '.srm-ring-logo{display:inline-flex;align-items:center;gap:.3rem;text-decoration:none;',
       'font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem;line-height:1}',
       '.srm-ring-logo img{width:16px;height:16px}',
-      '.srm-ring-logo sup{font-size:.6em}',
       '</style>',
     ].join('\n');
   }
