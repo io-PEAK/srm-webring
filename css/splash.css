@@ -490,7 +490,7 @@ body {
 
 .directory-header-name { flex: 1; }
 .directory-header-badge { width: 5.5rem; margin-right: 1rem; }
-.directory-header-course { width: 11rem; margin-left: -0.75rem; }
+.directory-header-course { width: 11rem; margin-right: 1rem; }
 .directory-header-site { width: 10rem; }
 .directory-header-city { width: 5.5rem; text-align: right; }
 
@@ -571,10 +571,10 @@ body {
   letter-spacing: -0.01em;
   color: var(--fg-muted);
   width: 11rem;
-  margin-left: -0.75rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-right: 1rem;
 }
 
 .directory-row-site {
@@ -1609,7 +1609,7 @@ body {
 
   .directory-row-course {
     width: 100%;
-    margin-left: 0;
+    margin-right: 0;
     font-size: 0.65rem;
     font-weight: 500;
     color: var(--fg-muted);
