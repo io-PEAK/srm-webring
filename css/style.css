@@ -841,12 +841,13 @@ body {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
-.field-error {
+.join-form .field-error {
   font-style: normal;
   color: #b3261e;
   font-size: 0.75rem;
   line-height: 1.4;
 }
+.join-form label.has-error .field-help { display: none; }
 .join-form input.is-invalid,
 .join-form select.is-invalid,
 .join-form textarea.is-invalid {

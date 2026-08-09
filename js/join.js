@@ -396,6 +396,7 @@
     const label = input.closest('label') || input.closest('.join-badge-field');
     input.classList.toggle('is-invalid', !!message);
     input.setAttribute('aria-invalid', message ? 'true' : 'false');
+    label.classList.toggle('has-error', !!message);
     let errEl = label.querySelector('.field-error');
     if (message) {
       if (!errEl) {
@@ -407,6 +408,25 @@
     } else if (errEl) {
       errEl.remove();
     }
+  }
+
+  // Live check for the college email field: the suffix is already fixed at
+  // @srmist.edu.in, so flag any @ the user types themselves (double-@) as
+  // soon as it appears instead of waiting for submit.
+  function validateCollegeEmailLive() {
+    const el = document.getElementById('collegeEmail');
+    const prefix = el.value.trim();
+    if (!prefix) {
+      setFieldError(el, '');
+      return true;
+    }
+    const msg = /^[a-z0-9._%+-]+$/i.test(prefix) && emailValid(prefix + '@srmist.edu.in')
+      ? ''
+      : (prefix.indexOf('@') !== -1
+        ? "Don't include @srmist.edu.in, just your username (e.g. sn1234)."
+        : 'Enter your SRM^NCR username (e.g. sn1234).');
+    setFieldError(el, msg);
+    return !msg;
   }
 
   function validate() {
@@ -466,7 +486,12 @@
 
   // Clear a field's error as soon as the user edits it.
   form.addEventListener('input', function (event) {
-    if (event.target.matches('input, select, textarea') && event.target.classList.contains('is-invalid')) {
+    if (!event.target.matches('input, select, textarea')) return;
+    if (event.target.id === 'collegeEmail') {
+      validateCollegeEmailLive();
+      return;
+    }
+    if (event.target.classList.contains('is-invalid')) {
       setFieldError(event.target, '');
     }
   });
