@@ -490,6 +490,7 @@ body {
 
 .directory-header-name { flex: 1; }
 .directory-header-badge { width: 5.5rem; margin-right: 1rem; }
+.directory-header-course { width: 11rem; margin-left: -0.75rem; }
 .directory-header-site { width: 10rem; }
 .directory-header-city { width: 5.5rem; text-align: right; }
 
@@ -562,6 +563,18 @@ body {
   font-family: 'Space Mono', monospace;
   font-size: 0.7rem;
   color: var(--fg-faint);
+}
+
+.directory-row-course {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg-muted);
+  width: 11rem;
+  margin-left: -0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .directory-row-site {
@@ -1573,7 +1586,7 @@ body {
     gap: 0.2rem;
     flex: 0 0 140px;
     width: 140px;
-    height: 72px;
+    height: 92px;
     padding: 0.6rem 0.65rem;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -1593,6 +1606,17 @@ body {
   }
 
   .directory-row-badge { display: none; }
+
+  .directory-row-course {
+    width: 100%;
+    margin-left: 0;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--fg-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .directory-row-site {
     display: block;
@@ -1742,6 +1766,8 @@ body {
   .directory-inner { padding: 2rem 2rem; gap: 1.5rem; }
   .directory-header-site,
   .directory-row-site { width: 8rem; }
+  .directory-header-course,
+  .directory-row-course { width: 8rem; }
   .directory-header-city,
   .directory-row-city { width: 4.5rem; }
 }

@@ -66,6 +66,10 @@
     name.className = 'directory-row-name';
     name.textContent = m.name || 'Unnamed';
 
+    var course = document.createElement('span');
+    course.className = 'directory-row-course';
+    course.textContent = m.program || '\u2014';
+
     var site = document.createElement('span');
     site.className = 'directory-row-site';
     site.textContent = domain(m.website);
@@ -81,6 +85,7 @@
 
     a.appendChild(badge);
     a.appendChild(name);
+    a.appendChild(course);
     a.appendChild(site);
     a.appendChild(city);
     a.appendChild(visit);
