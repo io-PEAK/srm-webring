@@ -889,7 +889,13 @@ export default {
         const brevo = await sendVerifyEmail(env, entry.collegeEmail, entry.name, verifyUrl);
         if (!brevo.ok) {
           await env.EMAIL_STORE.delete(siteKey);
-          return new Response(JSON.stringify({ success: false, error: 'Could not send the verification email. Please try again.' }), {
+          const brevoDetail = brevo.json
+            ? String(brevo.json.message || brevo.json.code || JSON.stringify(brevo.json))
+            : '';
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Could not send the verification email. Please try again.' + (brevoDetail ? ' (' + brevoDetail + ')' : ''),
+          }), {
             status: 502,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
