@@ -559,8 +559,12 @@
   // Restore the saved step (and re-render step 2/3 content) so a refresh
   // keeps the user where they were.
   goToStep(savedStep, false);
-  if (savedStep === 2) showPending(null);
-  else if (savedStep === 3) showSuccess(null);
+  if (savedStep === 2) {
+    showPending(null);
+    startPendingPoll(document.getElementById('website').value.trim());
+  } else if (savedStep === 3) {
+    showSuccess(null);
+  }
 
   // ── Submit: multipart POST to the backend worker ──
   // Step 1 only — the worker emails a verification link; the PR is
@@ -603,6 +607,7 @@
         if (result.ok && result.data.pending) {
           goToStep(2, true);
           showPending(result.data.message);
+          startPendingPoll(document.getElementById('website').value.trim());
         } else if (result.ok && result.data.success && result.data.prUrl) {
           goToStep(3, true);
           showSuccess(result.data.prUrl);
@@ -630,6 +635,31 @@
     });
   }
 
+  // Poll the worker while the member waits on step 2. As soon as the
+  // verification link is clicked, auto-advance to step 3 with the widget.
+  let pendingPoll = null;
+
+  function stopPendingPoll() {
+    if (pendingPoll) { clearInterval(pendingPoll); pendingPoll = null; }
+  }
+
+  function startPendingPoll(site) {
+    stopPendingPoll();
+    if (!site) return;
+    pendingPoll = setInterval(function () {
+      fetch(API + '/join/status?site=' + encodeURIComponent(site))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.verified) {
+            stopPendingPoll();
+            goToStep(3, true);
+            showSuccess(data.prUrl || null);
+          }
+        })
+        .catch(function () { /* transient network hiccup, keep polling */ });
+    }, 3000);
+  }
+
   function showPending(message) {
     const verifyContent = document.getElementById('verifyContent');
     verifyContent.textContent = '';
@@ -642,6 +672,17 @@
       ? escapeHtml(message)
       : 'Verification link sent to <strong>' + escapeHtml(collegeEmail) + '</strong>.';
     el.appendChild(line);
+
+    const restart = document.createElement('button');
+    restart.type = 'button';
+    restart.className = 'onboard-inline-link';
+    restart.textContent = 'Start over';
+    restart.addEventListener('click', function () {
+      stopPendingPoll();
+      clearDraft();
+      location.reload();
+    });
+    line.appendChild(restart);
 
     const steps = document.createElement('ul');
     steps.className = 'onboard-checklist';
@@ -658,8 +699,9 @@
     const verifiedBtn = document.createElement('button');
     verifiedBtn.type = 'button';
     verifiedBtn.className = 'join-submit';
-    verifiedBtn.textContent = 'I\u2019ve verified. Show my widget code';
+    verifiedBtn.textContent = 'Show my widget code';
     verifiedBtn.addEventListener('click', function () {
+      stopPendingPoll();
       goToStep(3, true);
       showSuccess(null);
     });
@@ -673,16 +715,6 @@
       if (submittedForm) submitJoin();
     });
     actions.appendChild(resend);
-
-    const restart = document.createElement('button');
-    restart.type = 'button';
-    restart.className = 'onboard-link';
-    restart.textContent = 'Start over';
-    restart.addEventListener('click', function () {
-      clearDraft();
-      location.reload();
-    });
-    actions.appendChild(restart);
 
     el.appendChild(actions);
     verifyContent.appendChild(el);

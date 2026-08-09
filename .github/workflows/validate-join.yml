@@ -52,6 +52,10 @@ jobs:
     if: success()
     runs-on: ubuntu-latest
     steps:
+      # gh needs a git repo to resolve the target repository, and the
+      # branch delete is a git refs API call. Without a checkout this job
+      # failed with "failed to run git: fatal: not a git repository".
+      - uses: actions/checkout@v4
       - name: Wait for merge and delete branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -75,6 +75,9 @@ function mimeForType(type) {
 // (GET /join/verify) commits the member to git and opens the PR.
 const SRM_COLLEGE_DOMAIN = '@srmist.edu.in';
 const PENDING_TTL_SECONDS = 60 * 60; // link expires after 1 hour
+// How long the "this site was verified" marker lives so the join page can
+// auto-advance a member to step 3 even if they verify from another tab.
+const VERIFIED_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
 function generateToken() {
@@ -114,7 +117,7 @@ function httpError(message, status = 500) {
 
 async function sendVerifyEmail(env, to, name, verifyUrl) {
         const senderEmail = env.SENDER_EMAIL;
-  const htmlContent = emailShell('Email Verification', `
+  const htmlContent = emailShell(`
     <p>Hi <strong>${escapeHtml(name)}</strong>,</p>
     <p>You submitted a request to join the SRM NCR WebRing. To confirm this SRM NCR email address belongs to you, click the button below:</p>
     <p style="text-align:center;margin:28px 0;">
@@ -147,20 +150,39 @@ function pageShell(title, bodyHtml, linkHtml) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} | SRM NCR WebRing</title>
+  <link rel="icon" href="${RING_BASE}/img/tree_yellow.png" type="image/png">
   <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b0e14; color: #e8eef7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .card { max-width: 460px; margin: 24px; padding: 32px; background: #141a24; border: 1px solid #2a3446; border-radius: 12px; }
-    h1 { color: #c8a008; margin: 0 0 12px; font-size: 1.6rem; }
-    p { line-height: 1.55; color: #aab6c8; }
-    a { color: #6fb3ff; }
-    .btn { display: inline-block; margin-top: 8px; padding: 10px 20px; background: #0c4da2; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 700; }
+    @font-face{font-family:'Minecraft';font-style:normal;font-weight:400;font-display:swap;src:url('${RING_BASE}/fonts/Minecraft.ttf') format('truetype');}
+    @font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;src:url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4C_k3HqU.woff2') format('woff2');}
+    @font-face{font-family:'Space Mono';font-style:normal;font-weight:400;font-display:swap;src:url('https://fonts.gstatic.com/s/spacemono/v17/i7dPIFZifjKcF5UAWdDRYEF8RXi4EwQ.woff2') format('woff2');}
+    @font-face{font-family:'Space Mono';font-style:normal;font-weight:700;font-display:swap;src:url('https://fonts.gstatic.com/s/spacemono/v17/i7dMIFZifjKcF5UAWdDRaPpZUFWaHi6WZ3Q.woff2') format('woff2');}
+    :root{color-scheme:light;--bg:#f5f3f0;--fg:#1c1917;--fg-muted:#706b66;--border:#e0ddd8;--accent:#0c4da2;--accent-2:#c8a008;--panel-alt:#efece7;--fg-on-accent:#fff;--font-body:'Space Grotesk',-apple-system,BlinkMacSystemFont,sans-serif;--font-mono:'Space Mono',ui-monospace,monospace;}
+    @media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#13120f;--fg:#e0ddd8;--fg-muted:#928c86;--border:#2a2927;--accent:#0c4da2;--accent-2:#c8a008;--panel-alt:#1a1918;--fg-on-accent:#fff;}}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--fg);font-family:var(--font-body);min-height:100vh;min-height:100dvh;overflow-x:hidden;}
+    .back-link{position:fixed;top:1rem;left:1rem;z-index:50;background:var(--accent);color:var(--fg-on-accent);padding:1rem 2.5rem;border-radius:6px;font-family:var(--font-body);font-size:1.1rem;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.18);transition:opacity .2s;}
+    .back-link:hover{opacity:.85;color:var(--fg-on-accent);}
+    main{max-width:720px;margin:0 auto;padding:8rem 2rem 4rem;min-height:100dvh;}
+    h1{font-family:'Minecraft',sans-serif;font-weight:400;font-size:clamp(2rem,5vw,4rem);letter-spacing:0;line-height:1;text-transform:uppercase;margin-bottom:1rem;}
+    h1 span{color:var(--accent-2);}
+    p{color:var(--fg-muted);line-height:1.6;margin-bottom:1rem;max-width:38rem;}
+    h2{font-family:'Minecraft',sans-serif;font-weight:400;letter-spacing:0;margin:1.6rem 0 .6rem;font-size:1.4rem;}
+    code{font-family:var(--font-mono);}
+    .widget-code{position:relative;background:var(--panel-alt);border:1px solid var(--border);border-radius:10px;padding:1rem 1rem .5rem;margin-bottom:1.2rem;max-width:38rem;}
+    .widget-code pre{margin:0;overflow-x:auto;font-family:var(--font-mono);font-size:.78rem;line-height:1.55;color:var(--fg);white-space:pre;padding-top:1.6rem;}
+    .widget-copy{position:absolute;top:.5rem;right:.5rem;background:var(--accent);color:var(--fg-on-accent);border:none;border-radius:6px;padding:.4rem .9rem;cursor:pointer;font-family:var(--font-body);font-size:.85rem;font-weight:700;transition:opacity .15s,background .15s;}
+    .widget-copy:hover{opacity:.85;}
+    .widget-copy.is-copied{background:var(--accent-2);}
+    .btn{display:inline-block;margin-top:8px;padding:10px 20px;background:var(--accent);color:var(--fg-on-accent)!important;text-decoration:none;border-radius:999px;font-weight:700;font-family:var(--font-body);transition:opacity .2s;}
+    .btn:hover{opacity:.85;}
   </style>
 </head>
 <body>
-  <div class="card">
+  <a class="back-link" href="${RING_BASE}/">&larr; Back to ring</a>
+  <main>
     ${bodyHtml}
-    ${linkHtml ? `<p style="margin-top: 20px;">${linkHtml}</p>` : ''}
-  </div>
+    ${linkHtml ? `<p style="margin-top:20px;">${linkHtml}</p>` : ''}
+  </main>
 </body>
 </html>`;
 }
@@ -169,14 +191,13 @@ function pageShell(title, bodyHtml, linkHtml) {
 // typography, and a muted footer. Fully inline-styled because most
 // email clients strip <style> tags. The styled name SRM<sup>NCR</sup>
 // is kept only in the header; body copy uses plain "SRM NCR".
-function emailShell(title, bodyHtml) {
+function emailShell(bodyHtml) {
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0b0e14;padding:24px;">
       <div style="max-width:520px;margin:0 auto;background:#141a24;border:1px solid #2a3446;border-radius:12px;padding:32px;color:#aab6c8;font-size:.95rem;line-height:1.55;">
         <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid #2a3446;margin-bottom:24px;">
           <img src="https://io-PEAK.github.io/srm-ncr-webring/img/tree_yellow.png" alt="SRM NCR WebRing" style="width:52px;height:47px;display:block;margin:0 auto;">
           <h2 style="color:#c8a008;margin:12px 0 0;font-size:1.3rem;font-weight:700;">SRM<sup>NCR</sup> WebRing</h2>
-          <p style="color:#6fb3ff;margin:6px 0 0;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;">${title}</p>
         </div>
         ${bodyHtml}
         <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #2a3446;color:#5a6a85;font-size:.78rem;line-height:1.5;">You received this email because your site is a member of the SRM NCR WebRing. If you didn't expect this, you can ignore it.</p>
@@ -190,57 +211,17 @@ function emailCallout(color, html) {
   return `<div style="background:#1b2130;border:1px solid ${color};border-left:4px solid ${color};border-radius:6px;padding:14px 16px;margin:20px 0;">${html}</div>`;
 }
 
-function verifiedPage(prUrl, website, pixelBase) {
-  const code = escapeHtml(widgetSnippetHtml(RING_BASE, website, pixelBase));
+function verifiedPage(prUrl) {
   return pageShell(
     'Verified',
-    `<h1>Verified! &#10003;</h1>
-     <p>Your SRM^NCR college email is verified. Your webring request has been submitted as a pull request and will be reviewed shortly.</p>
-     <h2 style="color:#6fb3ff;font-size:1.05rem;margin:20px 0 8px;">Next: add the widget to your site</h2>
-     <p style="font-size:0.85rem;margin-bottom:10px;">Paste this just before <code>&lt;/body&gt;</code> on your homepage so your site appears in ring navigation:</p>
-     <pre id="wcode" style="margin:0 0 10px;background:#0b0e14;border:1px solid #2a3446;border-radius:6px;padding:12px;font-size:0.72rem;line-height:1.5;overflow:auto;white-space:pre-wrap;word-break:break-all;">${code}</pre>
-     <button class="btn" type="button" style="font-family:inherit;cursor:pointer;border:0;" onclick="copyCode()">Copy code</button>
-     <script>
-     function copyCode(){
-       var t=document.getElementById('wcode').textContent;
-       var btn=document.querySelector('button[onclick=copyCode]');
-       function done(){ if(btn){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy code';},1500);} }
-       function fb(){ var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta); }
-       if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done,function(){fb();done();}); } else { fb();done(); }
-     }
-     </script>`,
-    `<a class="btn" href="${prUrl}" target="_blank" rel="noopener noreferrer">View pull request &rarr;</a><br><br><a href="${RING_BASE}/">Back to the ring</a>`
+    `<h1>Verified<span>!</span></h1>
+     <p>Your SRM NCR college email is verified. Your webring request has been submitted as a pull request and will be reviewed shortly.</p>
+     <p>Head back to the join page, we've moved you to the final step where your widget code is ready to copy.</p>
+     <p><a class="btn" href="${RING_BASE}/join.html">Back to the join form &rarr;</a></p>`,
+    prUrl
+      ? `<a class="btn" href="${prUrl}" target="_blank" rel="noopener noreferrer">View pull request &rarr;</a>`
+      : ''
   );
-}
-
-// The widget members paste into their footer: ring navigation links, the
-// tree logo, the tracking pixel, and the inline styles. Shared by the
-// frontend builder (js/join.js) and the backend "verified" page.
-function widgetSnippetHtml(ringBase, site, pixelBase) {
-  const base = String(ringBase).replace(/\/+$/, '');
-  const px = String(pixelBase).replace(/\/+$/, '') + '/widget?site=' + encodeURIComponent(site);
-  return [
-    '<!-- SRM NCR WebRing widget -->',
-    '<div class="srm-ring-widget">',
-    '  <a href="' + base + '/#' + site + '?nav=prev" class="srm-ring-arrow">&larr;</a>',
-    '  <a href="' + base + '/" class="srm-ring-logo">',
-    '    <img src="' + base + '/img/tree_yellow.png" alt="SRM NCR WebRing" width="16" height="16">',
-    '    <span>SRM<sup>NCR</sup></span>',
-    '  </a>',
-    '  <a href="' + base + '/#' + site + '?nav=next" class="srm-ring-arrow">&rarr;</a>',
-    '</div>',
-    '<img src="' + px + '" width="1" height="1" alt="" style="border:0" aria-hidden="true">',
-    '<style>',
-    '.srm-ring-widget{display:inline-flex;align-items:center;gap:.6rem;padding:.5rem .9rem;',
-    'border:1px solid rgba(12,77,162,.35);border-radius:999px;background:#fff;',
-    'box-shadow:0 1px 3px rgba(0,0,0,.08)}',
-    '.srm-ring-arrow{text-decoration:none;font-weight:700;font-size:1.1rem;color:#0c4da2;line-height:1}',
-    '.srm-ring-logo{display:inline-flex;align-items:center;gap:.3rem;text-decoration:none;',
-    'font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem;line-height:1}',
-    '.srm-ring-logo img{width:16px;height:16px}',
-    '.srm-ring-logo sup{font-size:.6em}',
-    '</style>',
-  ].join('\n');
 }
 
 function verifyErrorPage() {
@@ -673,7 +654,7 @@ export default {
 
         if (type === 'warning') {
           subject = '[ACTION REQUIRED] Your site is unreachable, SRM NCR WebRing';
-          htmlContent = emailShell('Site down warning', `
+          htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>During our automated checks, we were unable to reach your website: <a href="${site}" style="color:#6fb3ff;">${site}</a>.</p>
             <p>Your site has been marked as <strong>hidden</strong> and is temporarily excluded from the WebRing navigation and directory to keep things running smoothly for visitors.</p>
@@ -682,7 +663,7 @@ export default {
           `);
         } else if (type === 'removal') {
           subject = 'Website removed from SRM NCR WebRing';
-          htmlContent = emailShell('Membership removed', `
+          htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your website (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been unreachable for <strong>15 days</strong>.</p>
             <p>As per the webring rules, your entry has been permanently removed from <code>members.json</code>.</p>
@@ -690,7 +671,7 @@ export default {
           `);
         } else if (type === 'graduation') {
           subject = 'Congratulations on your graduation, SRM NCR WebRing';
-          htmlContent = emailShell('Graduation notice', `
+          htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Happy graduation! We noticed your graduation date grace period (30 days) has passed.</p>
             <p>To keep the ring active for current students, your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been automatically removed from the directory.</p>
@@ -698,7 +679,7 @@ export default {
           `);
         } else if (type === 'widget-warning') {
           subject = '[ACTION REQUIRED] Your webring widget is missing, SRM NCR WebRing';
-          htmlContent = emailShell('Widget missing warning', `
+          htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) is listed in the webring, but our checks can't find the webring widget on it.</p>
             ${emailCallout('#ffcc00', '<strong>[WARNING]</strong> The widget is what makes your site part of the ring navigation. If it is still missing in <strong>9 days</strong> (30 days total), your entry will be removed.')}
@@ -706,7 +687,7 @@ export default {
           `);
         } else if (type === 'widget-removal') {
           subject = 'Removed from SRM NCR WebRing, widget missing';
-          htmlContent = emailShell('Widget missing removal', `
+          htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has not had the webring widget installed for <strong>30 days</strong>, so your entry has been removed from <code>members.json</code>.</p>
             <p>You're welcome to rejoin anytime, add the widget to your site and submit a new join request at <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color:#6fb3ff;">Join the ring</a>.</p>
@@ -905,6 +886,35 @@ export default {
         }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
       }
 
+      // ── JOIN STATUS ROUTE (polled by the join page while on step 2) ──
+      // Tells the join page whether the verification link for a site has
+      // been clicked so it can auto-advance to step 3.
+      if (url.pathname === '/join/status') {
+        if (request.method !== 'GET') {
+          return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+        }
+        const site = (url.searchParams.get('site') || '').trim();
+        if (!site) {
+          return new Response(JSON.stringify({ error: 'Missing site' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          });
+        }
+        const norm = normSite(site);
+        const verifiedRaw = await env.EMAIL_STORE.get('verified:join:' + norm);
+        if (verifiedRaw) {
+          let prUrl = null;
+          try { prUrl = JSON.parse(verifiedRaw).prUrl || null; } catch (e) { /* noop */ }
+          return new Response(JSON.stringify({ verified: true, prUrl }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          });
+        }
+        const pendingRaw = await env.EMAIL_STORE.get('pending:join:' + norm);
+        return new Response(JSON.stringify({ verified: false, pending: !!pendingRaw }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+
       // ── JOIN VERIFY ROUTE (magic link opened from the email) ──
       if (url.pathname === '/join/verify') {
         if (request.method !== 'GET') {
@@ -950,7 +960,14 @@ export default {
         }
         await env.EMAIL_STORE.delete(siteKey);
 
-        return new Response(verifiedPage(result.prUrl, result.website, url.origin), {
+        // Marker the join page polls so it can auto-advance to step 3.
+        await env.EMAIL_STORE.put(
+          'verified:join:' + normSite(result.website),
+          JSON.stringify({ prUrl: result.prUrl, verifiedAt: Date.now() }),
+          { expirationTtl: VERIFIED_TTL_SECONDS }
+        );
+
+        return new Response(verifiedPage(result.prUrl), {
           headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders },
         });
       }

@@ -192,18 +192,44 @@ describe("join route (magic link verification)", () => {
     const verify = await SELF.fetch(verifyLink(pending, FIELDS.website));
     expect(verify.status).toBe(200);
     const page = await verify.text();
-    expect(page).toContain("Verified!");
+    expect(page).toContain("Verified");
     expect(page).toContain("https://github.com/io-PEAK/srm-ncr-webring/pull/1");
-    // The verified page hands the member their widget code (step 3).
-    expect(page).toContain("srm-ring-widget");
-    expect(page).toContain("/widget?site=https%3A%2F%2Fshivam.example");
-    expect(page).toContain("img/tree_yellow.png");
+    // The widget code lives on the join page's step 3, not here; the
+    // verified page just confirms and points back to the join form.
+    expect(page).toContain("join.html");
+    expect(page).not.toContain("srm-ring-widget");
+    expect(page).not.toContain("/widget?site=https%3A%2F%2Fshivam.example");
 
     expect(members).toHaveLength(1);
     expect(members[0].name).toBe("Shivam");
     expect(members[0].collegeEmail).toBeUndefined();
     expect(members[0].personalEmail).toBeUndefined();
     expect(putBodies[0].message).toBe("Add Shivam to webring");
+  });
+
+  it("join status reports pending before verify and verified (with PR URL) after", async () => {
+    const members = [];
+    const putBodies = [];
+    mockGitHub(members, putBodies, 1);
+    mockBrevo(1);
+    const site = "https://shivam-status-" + Date.now() + ".example";
+    const fields = { ...FIELDS, website: site };
+
+    const before = await (await SELF.fetch("https://worker.dev/join/status?site=" + encodeURIComponent(site))).json();
+    expect(before.verified).toBe(false);
+    expect(before.pending).toBe(false);
+
+    await joinOnly(fields);
+    const during = await (await SELF.fetch("https://worker.dev/join/status?site=" + encodeURIComponent(site))).json();
+    expect(during.verified).toBe(false);
+    expect(during.pending).toBe(true);
+
+    const pending = await pendingFor(site);
+    const verify = await SELF.fetch(verifyLink(pending, site));
+    expect(verify.status).toBe(200);
+    const after = await (await SELF.fetch("https://worker.dev/join/status?site=" + encodeURIComponent(site))).json();
+    expect(after.verified).toBe(true);
+    expect(after.prUrl).toBe("https://github.com/io-PEAK/srm-ncr-webring/pull/1");
   });
 
   it("re-joining with the same college email overwrites the existing entry", async () => {
