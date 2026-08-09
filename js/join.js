@@ -26,6 +26,40 @@
   let citiesData = null;
   let programsData = null;
 
+  // ── Draft persistence ──────────────────────────────
+  // Keep typed details across the round-trip to badge.html (and
+  // accidental refreshes) via sessionStorage; cleared on submit.
+  const DRAFT_KEY = 'srm-join-draft';
+  const DRAFT_FIELDS = ['name', 'website', 'program', 'location', 'gradDate', 'collegeEmail', 'personalEmail'];
+
+  function saveDraft() {
+    const data = {};
+    DRAFT_FIELDS.forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) data[id] = el.value;
+    });
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch (e) { /* noop */ }
+  }
+
+  function restoreDraft() {
+    try {
+      const data = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
+      if (!data) return;
+      DRAFT_FIELDS.forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el && data[id] != null) el.value = data[id];
+      });
+    } catch (e) { /* noop */ }
+  }
+
+  function clearDraft() {
+    try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) { /* noop */ }
+  }
+
+  restoreDraft();
+  form.addEventListener('input', saveDraft);
+  form.addEventListener('change', saveDraft);
+
   // ── Autocomplete dropdowns (city / town + program) ──
   function populateCities() {
     return fetch('data/cities.json')
@@ -527,6 +561,7 @@
       .then(function (result) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit request';
+        if (result.ok) clearDraft();
         if (result.ok && result.data.pending) {
           goToStep(2, true);
           showPending(result.data.message);

@@ -151,35 +151,64 @@ function init() {
             tempCtx.fill();
 
         } else if (selectedPreset === 'glitch') {
-            let offset = 0;
-            let doGlitch = false;
+            // Clean base: text (background, emblem, and border are drawn above).
+            drawTextLabel(textVal, textVal, 11, 10, 1);
+            drawTextLabel(subVal, subVal, 22, 7, 1);
 
-            // Only frames 2 and 7 glitch so the corruption reads as a brief interruption.
-            if (frameIndex === 2 || frameIndex === 7) {
-                offset = (Math.random() - 0.5) * 4;
-                doGlitch = true;
-            }
+            // Short bursts of corruption between clean frames, so the glitch
+            // reads as a brief signal interruption instead of constant noise.
+            const burst = [2, 4, 6, 8];
+            const heavy = 6;
+            if (burst.indexOf(frameIndex) !== -1) {
+                const isHeavy = frameIndex === heavy;
 
-            const glitch = function (val, y, size) {
-                let f = Math.max(5, Math.round(size));
-                tempCtx.font = 'bold ' + f + "px Arial, 'Helvetica Neue', sans-serif";
-                tempCtx.textBaseline = 'middle';
-                const maxW = width - TEXT_X - 2;
-                while (f > 5 && tempCtx.measureText(val).width > maxW) {
-                    f -= 1;
-                    tempCtx.font = 'bold ' + f + "px Arial, 'Helvetica Neue', sans-serif";
+                // Snapshot the clean frame so horizontal bands can be torn from it.
+                const snap = document.createElement('canvas');
+                snap.width = width;
+                snap.height = height;
+                snap.getContext('2d').drawImage(tempCtx.canvas, 0, 0);
+
+                // Tear horizontal slices and slide each one sideways.
+                const sliceCount = isHeavy ? 6 : 3;
+                for (let s = 0; s < sliceCount; s++) {
+                    const sliceH = 2 + Math.floor(Math.random() * (isHeavy ? 7 : 4));
+                    const sliceY = Math.floor(Math.random() * (height - sliceH));
+                    const dir = Math.random() < 0.5 ? -1 : 1;
+                    const shift = isHeavy
+                        ? dir * (3 + Math.floor(Math.random() * 6))
+                        : dir * (1 + Math.floor(Math.random() * 3));
+                    tempCtx.drawImage(snap, 0, sliceY, width, sliceH, shift, sliceY, width, sliceH);
                 }
-                tempCtx.fillStyle = '#ffffff';
-                tempCtx.fillText(val, Math.round(TEXT_X + offset), Math.round(y));
-            };
 
-            glitch(textVal, 11, 10);
-            glitch(subVal, 22, 7);
+                // Chromatic aberration: red fringe left, cyan fringe right.
+                if (isHeavy) {
+                    function tintPass(color, dx) {
+                        const pass = document.createElement('canvas');
+                        pass.width = width;
+                        pass.height = height;
+                        const pctx = pass.getContext('2d');
+                        pctx.drawImage(snap, 0, 0);
+                        pctx.globalCompositeOperation = 'source-in';
+                        pctx.fillStyle = color;
+                        pctx.fillRect(0, 0, width, height);
+                        tempCtx.globalCompositeOperation = 'lighter';
+                        tempCtx.globalAlpha = 0.5;
+                        tempCtx.drawImage(pass, dx, 0);
+                        tempCtx.globalAlpha = 1;
+                        tempCtx.globalCompositeOperation = 'source-over';
+                    }
+                    tintPass('#ff2020', -1);
+                    tintPass('#20ffff', 1);
+                }
 
-            if (doGlitch) {
-                // Glitch scanline bar
-                tempCtx.fillStyle = accentColor.value;
-                tempCtx.fillRect(0, Math.floor(Math.random() * height), width, 1);
+                // Glitch scanlines across the badge.
+                const scanCount = isHeavy ? 2 : 1;
+                for (let s = 0; s < scanCount; s++) {
+                    tempCtx.fillStyle = accentColor.value;
+                    tempCtx.globalAlpha = 0.9;
+                    tempCtx.fillRect(0, Math.floor(Math.random() * height), width, 1);
+                }
+                tempCtx.globalAlpha = 1;
             }
 
         } else if (selectedPreset === 'typewriter') {
@@ -263,21 +292,34 @@ function init() {
                 clearInterval(animationTimer);
                 currentFrameIndex = index;
                 renderPreviewFrame();
-                highlightFrameStripActive();
+                highlightFrameStripActive(true);
             });
 
             frameStrip.appendChild(container);
         });
     }
 
-    function highlightFrameStripActive() {
+    function highlightFrameStripActive(doScroll) {
         if (!frameStrip) return;
         const thumbs = frameStrip.querySelectorAll('.frame-thumbnail');
         thumbs.forEach((t, index) => {
             if (index === currentFrameIndex) {
                 t.classList.add('is-active');
-                // Scroll thumbnail into view if needed
-                t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                // Scroll only on a manual thumbnail click, and only ever scroll
+                // the frame strip itself — never the page — so a stationary
+                // cursor can't be shifted onto a neighbouring control.
+                if (doScroll) {
+                    const stripRect = frameStrip.getBoundingClientRect();
+                    const thumbRect = t.getBoundingClientRect();
+                    if (thumbRect.left < stripRect.left || thumbRect.right > stripRect.right) {
+                        frameStrip.scrollBy({
+                            left: thumbRect.left < stripRect.left
+                                ? thumbRect.left - stripRect.left - 4
+                                : thumbRect.right - stripRect.right + 4,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
             } else {
                 t.classList.remove('is-active');
             }

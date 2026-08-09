@@ -347,6 +347,7 @@ body {
 @media (max-width: 600px) { .badge-creator { grid-template-columns: 1fr; } }
 .editor-controls { display: flex; flex-direction: column; gap: 1rem; }
 .control-group { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; color: var(--fg-muted); }
+.control-group .control-label { font-size: 0.85rem; color: var(--fg-muted); }
 .control-group input[type="text"], .control-group select {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -393,10 +394,19 @@ body {
   font: inherit;
   font-size: 0.75rem;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
-.preset-btn:hover { border-color: var(--accent); }
-.preset-btn.is-active { border-color: var(--accent); }
+.preset-btn:hover {
+  border-color: var(--accent);
+}
+.preset-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--fg-on-accent);
+}
+.preset-btn:focus-visible {
+  outline: none;
+}
 .frame-strip-container {
   display: flex;
   flex-direction: column;
