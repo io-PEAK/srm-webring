@@ -113,18 +113,22 @@ function httpError(message, status = 500) {
 }
 
 async function sendVerifyEmail(env, to, name, verifyUrl) {
-  const senderEmail = env.SENDER_EMAIL || 'webring@srmncr.edu.in';
+        const senderEmail = env.SENDER_EMAIL;
   const htmlContent = `
     <div style="font-family: monospace; padding: 20px; background-color: #111; color: #fff; border: 1px solid #333; border-radius: 8px;">
-      <h2 style="color: #6fb3ff; border-bottom: 1px solid #333; padding-bottom: 10px;">SRM<sup>NCR</sup> WebRing Verification</h2>
+      <div style="text-align: center; margin-bottom: 18px;">
+        <img src="https://io-PEAK.github.io/srm-ncr-webring/img/tree_yellow.png" alt="SRM NCR WebRing" style="width: 48px; height: 44px;">
+        <h2 style="color: #c8a008; margin: 10px 0 0; font-size: 1.35rem;">SRM<sup>NCR</sup> WebRing</h2>
+        <p style="color: #6fb3ff; margin: 4px 0 0; font-size: 0.8rem;">Email Verification</p>
+      </div>
       <p>Hi <strong>${escapeHtml(name)}</strong>,</p>
-      <p>You submitted a request to join the SRM^NCR WebRing. To confirm this SRM^NCR email address belongs to you, click the button below:</p>
+      <p>You submitted a request to join the SRM NCR WebRing. To confirm this SRM NCR email address belongs to you, click the button below:</p>
       <p style="text-align: center; margin: 28px 0;">
         <a href="${verifyUrl}" style="display: inline-block; padding: 12px 26px; background-color: #0c4da2; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 700;">Verify my college email</a>
       </p>
       <p style="color: #aaa;">Or open this link: <a href="${verifyUrl}" style="color: #6fb3ff; word-break: break-all;">${verifyUrl}</a></p>
       <p>This link expires in 1 hour and can only be used once. If you didn't make this request, you can ignore this email.</p>
-      <p>Best regards,<br>SRM^NCR WebRing Bot</p>
+      <p>Best regards,<br>SRM NCR WebRing Bot</p>
     </div>
   `;
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -135,7 +139,7 @@ async function sendVerifyEmail(env, to, name, verifyUrl) {
       'accept': 'application/json',
     },
     body: JSON.stringify({
-      sender: { name: 'SRM^NCR WebRing', email: senderEmail },
+      sender: { email: senderEmail },
       to: [{ email: to, name }],
       subject: 'Verify your email to join SRM^NCR WebRing',
       htmlContent,
@@ -648,7 +652,7 @@ export default {
         let subject = '';
         let htmlContent = '';
 
-        const senderEmail = env.SENDER_EMAIL || 'webring@srmncr.edu.in';
+  const senderEmail = env.SENDER_EMAIL;
 
         if (type === 'warning') {
           subject = '[ACTION REQUIRED] Your site is unreachable — SRM^NCR WebRing';
@@ -727,7 +731,7 @@ export default {
             'accept': 'application/json'
           },
           body: JSON.stringify({
-            sender: { name: 'SRM^NCR WebRing', email: senderEmail },
+            sender: { email: senderEmail },
             to: [
               { email: collegeEmail, name: recipientName },
               { email: personalEmail, name: recipientName }
