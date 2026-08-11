@@ -26,7 +26,7 @@ const PROGRESS = OUT + '.progress';
 const FAILED = OUT + '.failed';
 const SAVE_EVERY = 25;
 const MIN_DELAY_MS = 1100;
-const USER_AGENT = 'srm-ncr-webring-geocoder/1.0 (https://github.com/io-PEAK/srm-ncr-webring)';
+const USER_AGENT = 'srm-webring-geocoder/1.0 (https://github.com/io-PEAK/srm-webring)';
 
 function loadOr(rel, fallback) {
   try { return JSON.parse(fs.readFileSync(rel, 'utf8')); }

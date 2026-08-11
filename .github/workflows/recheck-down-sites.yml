@@ -49,7 +49,7 @@ jobs:
                 const timeoutId = setTimeout(() => controller.abort(), 8000);
                 const res = await fetch(m.website, {
                   method: 'GET',
-                  headers: { 'User-Agent': 'SRMNCR-Webring-Bot/1.0' },
+                  headers: { 'User-Agent': 'SRM-Webring-Bot/1.0' },
                   signal: controller.signal
                 });
                 clearTimeout(timeoutId);

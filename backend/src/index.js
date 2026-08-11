@@ -6,7 +6,7 @@
 
 const BADGE_MAX_BYTES = 1024 * 1024; // 1 MB
 
-const RING_BASE = 'https://io-PEAK.github.io/srm-ncr-webring';
+const RING_BASE = 'https://io-PEAK.github.io/srm-webring';
 
 // 1x1 transparent GIF served as the widget tracking pixel.
 const WIDGET_PIXEL = 'R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
@@ -196,7 +196,7 @@ function emailShell(bodyHtml) {
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0b0e14;padding:24px;">
       <div style="max-width:520px;margin:0 auto;background:#141a24;border:1px solid #2a3446;border-radius:12px;padding:32px;color:#aab6c8;font-size:.95rem;line-height:1.55;">
         <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid #2a3446;margin-bottom:24px;">
-          <img src="https://io-PEAK.github.io/srm-ncr-webring/img/tree_yellow.png" alt="SRM WebRing" style="width:52px;height:47px;display:block;margin:0 auto;">
+          <img src="https://io-PEAK.github.io/srm-webring/img/tree_yellow.png" alt="SRM WebRing" style="width:52px;height:47px;display:block;margin:0 auto;">
           <h2 style="color:#c8a008;margin:12px 0 0;font-size:1.3rem;font-weight:700;">SRM WebRing</h2>
         </div>
         ${bodyHtml}
@@ -229,7 +229,7 @@ function verifyErrorPage() {
     'Link invalid',
     `<h1>Link invalid or expired</h1>
      <p>This verification link is invalid or has already been used. Please submit the join form again to receive a fresh link.</p>`,
-    `<a class="btn" href="https://io-PEAK.github.io/srm-ncr-webring/join.html">Back to the join form</a>`
+    `<a class="btn" href="https://io-PEAK.github.io/srm-webring/join.html">Back to the join form</a>`
   );
 }
 
@@ -358,7 +358,7 @@ async function geocodeLocation(location) {
     const q = encodeURIComponent(String(location).trim() + ', India');
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=in&accept-language=en`,
-      { headers: { 'User-Agent': 'srm-ncr-webring-worker/1.0' } }
+      { headers: { 'User-Agent': 'srm-webring-worker/1.0' } }
     );
     if (!res.ok) return null;
     const body = await res.json();
@@ -397,14 +397,14 @@ const TYPE_LABEL_COLORS = {
 // exist (422). Make sure each label exists before creating the issue.
 async function ensureLabels(headers, labels) {
   const listRes = await fetch(
-    `https://api.github.com/repos/io-PEAK/srm-ncr-webring/labels`,
+    `https://api.github.com/repos/io-PEAK/srm-webring/labels`,
     { headers }
   );
   if (!listRes.ok) return;
   const existing = new Set((await listRes.json()).map(l => l.name));
   for (const name of labels) {
     if (existing.has(name)) continue;
-    await fetch(`https://api.github.com/repos/io-PEAK/srm-ncr-webring/labels`, {
+    await fetch(`https://api.github.com/repos/io-PEAK/srm-webring/labels`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -431,11 +431,11 @@ export default {
 
     const url = new URL(request.url);
     const OWNER = 'io-PEAK';
-    const REPO = 'srm-ncr-webring';
+    const REPO = 'srm-webring';
     const ghHeaders = {
       Authorization: `Bearer ${env.GITHUB_TOKEN}`,
       Accept: 'application/vnd.github+json',
-      'User-Agent': 'srm-ncr-webring-worker',
+      'User-Agent': 'srm-webring-worker',
     };
 
     try {
@@ -667,7 +667,7 @@ export default {
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your website (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been unreachable for <strong>15 days</strong>.</p>
             <p>As per the webring rules, your entry has been permanently removed from <code>members.json</code>.</p>
-            <p>If this was a mistake or your site is back up, you are welcome to submit a new join request at the site: <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color:#6fb3ff;">Join Again</a>.</p>
+            <p>If this was a mistake or your site is back up, you are welcome to submit a new join request at the site: <a href="https://io-PEAK.github.io/srm-webring/join.html" style="color:#6fb3ff;">Join Again</a>.</p>
           `);
         } else if (type === 'graduation') {
           subject = 'Congratulations on your graduation, SRM WebRing';
@@ -690,7 +690,7 @@ export default {
           htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has not had the webring widget installed for <strong>30 days</strong>, so your entry has been removed from <code>members.json</code>.</p>
-            <p>You're welcome to rejoin anytime, add the widget to your site and submit a new join request at <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color:#6fb3ff;">Join the ring</a>.</p>
+            <p>You're welcome to rejoin anytime, add the widget to your site and submit a new join request at <a href="https://io-PEAK.github.io/srm-webring/join.html" style="color:#6fb3ff;">Join the ring</a>.</p>
           `);
         } else {
           return new Response('Invalid notification type', { status: 400, headers: corsHeaders });

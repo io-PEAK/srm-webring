@@ -40,23 +40,23 @@ const FIELDS = {
 // so interceptors are fully consumed before the afterEach check.
 function mockGitHub(members, putBodies, times = 1) {
   const gh = fetchMock.get("https://api.github.com");
-  gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/contents/data/members.json", method: "GET" })
+  gh.intercept({ path: "/repos/io-PEAK/srm-webring/contents/data/members.json", method: "GET" })
     .reply(200, () => ({ content: b64(JSON.stringify(members, null, 2)), sha: "file-sha" })).times(2 * times);
-  gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/git/ref/heads/main", method: "GET" })
+  gh.intercept({ path: "/repos/io-PEAK/srm-webring/git/ref/heads/main", method: "GET" })
     .reply(200, () => ({ object: { sha: "main-sha" } })).times(times);
-  gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/contents/data/cities.json", method: "GET" })
+  gh.intercept({ path: "/repos/io-PEAK/srm-webring/contents/data/cities.json", method: "GET" })
     .reply(404, () => ({})).times(times);
-  gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/git/refs", method: "POST" })
+  gh.intercept({ path: "/repos/io-PEAK/srm-webring/git/refs", method: "POST" })
     .reply(201, () => ({})).times(times);
-  gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/contents/data/members.json", method: "PUT" })
+  gh.intercept({ path: "/repos/io-PEAK/srm-webring/contents/data/members.json", method: "PUT" })
     .reply(200, (opts) => {
       const body = JSON.parse(opts.body);
       putBodies.push(body);
       members.splice(0, members.length, ...JSON.parse(Buffer.from(body.content, "base64").toString()));
       return { content: {} };
     }).times(times);
-  gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/pulls", method: "POST" })
-    .reply(201, () => ({ html_url: "https://github.com/io-PEAK/srm-ncr-webring/pull/1" })).times(times);
+  gh.intercept({ path: "/repos/io-PEAK/srm-webring/pulls", method: "POST" })
+    .reply(201, () => ({ html_url: "https://github.com/io-PEAK/srm-webring/pull/1" })).times(times);
 }
 
 // Mock the Brevo email API (verification links are sent on /join).
@@ -193,7 +193,7 @@ describe("join route (magic link verification)", () => {
     expect(verify.status).toBe(200);
     const page = await verify.text();
     expect(page).toContain("Verified");
-    expect(page).toContain("https://github.com/io-PEAK/srm-ncr-webring/pull/1");
+    expect(page).toContain("https://github.com/io-PEAK/srm-webring/pull/1");
     // The widget code lives on the join page's step 3, not here; the
     // verified page just confirms and points back to the join form.
     expect(page).toContain("join.html");
@@ -229,7 +229,7 @@ describe("join route (magic link verification)", () => {
     expect(verify.status).toBe(200);
     const after = await (await SELF.fetch("https://worker.dev/join/status?site=" + encodeURIComponent(site))).json();
     expect(after.verified).toBe(true);
-    expect(after.prUrl).toBe("https://github.com/io-PEAK/srm-ncr-webring/pull/1");
+    expect(after.prUrl).toBe("https://github.com/io-PEAK/srm-webring/pull/1");
   });
 
   it("re-joining with the same college email overwrites the existing entry", async () => {
@@ -310,7 +310,7 @@ describe("join route (magic link verification)", () => {
 
   it("rejects a different person registering an already-taken site", async () => {
     const gh = fetchMock.get("https://api.github.com");
-    gh.intercept({ path: "/repos/io-PEAK/srm-ncr-webring/contents/data/members.json", method: "GET" })
+    gh.intercept({ path: "/repos/io-PEAK/srm-webring/contents/data/members.json", method: "GET" })
       .reply(200, () => ({ content: b64(JSON.stringify([{ name: "Existing", website: "https://shivam.example" }], null, 2)), sha: "file-sha" }));
 
     const res = await SELF.fetch("https://worker.dev/join", {
