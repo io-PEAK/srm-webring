@@ -65,9 +65,6 @@ async function parseBadgeForm(request) {
   return { fields, fileBytes: null };
 }
 
-function mimeForType(type) {
-  return type;
-}
 
 // ── College email verification (magic link) ──────────
 // Joins are two-step: the form posts /join, which emails a one-time
@@ -650,7 +647,7 @@ export default {
         let subject = '';
         let htmlContent = '';
 
-  const senderEmail = env.SENDER_EMAIL;
+        const senderEmail = env.SENDER_EMAIL;
 
         if (type === 'warning') {
           subject = '[ACTION REQUIRED] Your site is unreachable, SRM WebRing';
@@ -940,6 +937,12 @@ export default {
         if (pending.fileBytesB64) {
           const fileBytes = base64ToBytes(pending.fileBytesB64);
           const sig = detectBadgeType(fileBytes);
+          if (!sig) {
+            await env.EMAIL_STORE.delete(siteKey);
+            return new Response(verifyErrorPage(), {
+              headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders },
+            });
+          }
           const key = badgeKey(entry.website, sig.ext);
           await env.BADGE_STORE.put(key, fileBytes);
           entry.badge = url.origin + '/' + key;
@@ -971,6 +974,37 @@ export default {
           headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders },
         });
       }
+
+      // ── CATCH-ALL ──
+      // No route matched (e.g. hitting the bare origin). Return a proper 404
+      // instead of letting the handler fall off the end, which Cloudflare
+      // reports as "Worker threw exception" (error 1101).
+      if (url.pathname === '/') {
+        return new Response(JSON.stringify({
+          service: 'SRM WebRing backend',
+          ok: true,
+          endpoints: [
+            '/api/members',
+            '/join',
+            '/join/status',
+            '/join/verify',
+            '/enquiry',
+            '/widget',
+            '/widget-status',
+            '/notify',
+            '/email-lookup',
+            '/update-badge',
+            '/badges/{key}',
+          ],
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
     } catch (err) {
       return new Response(JSON.stringify({ success: false, error: err.message }), {
         status: err.status || 500,
