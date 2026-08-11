@@ -1,10 +1,10 @@
 // ============================================================
-// js/members.js — SRM NCR WebRing shared member loader
+// js/members.js — SRM WebRing shared member loader
 // Fetches the active member list from the backend worker with a
 // data/members.json fallback and exposes it to every panel as
 // window.SRMData.load().
 // ============================================================
-/* SRM NCR Webring — shared member loader.
+/* SRM WebRing — shared member loader.
  *
  * Fetches the active member list once from /api/members (Cloudflare Worker)
  * with a data/members.json fallback, caches the promise, and exposes it as

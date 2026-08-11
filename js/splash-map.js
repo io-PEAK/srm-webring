@@ -1,9 +1,9 @@
 // ============================================================
-// js/splash-map.js — SRM NCR WebRing splash map
+// js/splash-map.js — SRM WebRing splash map
 // Projects each member's location onto the India SVG and draws
 // animated dots plus dashed routes between consecutive members.
 // ============================================================
-/* SRM NCR Webring — splash map (India) with animated ring.
+/* SRM WebRing — splash map (India) with animated ring.
  *
  * Reads the member list via SRMData, projects each member's lat/lng into the
  * India SVG viewBox (0 0 1000 1100) using an equirectangular projection, and

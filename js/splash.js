@@ -1,10 +1,10 @@
 // ============================================================
-// js/splash.js — SRM NCR WebRing 3D cylinder carousel
+// js/splash.js — SRM WebRing 3D cylinder carousel
 // Drives the ring of panels (wheel/touch/keyboard/snap-to) and
 // emits panelchange/panelsettle/panelunsettle events that the
 // other panels listen for.
 // ============================================================
-/* SRM NCR Webring — 3D cylinder carousel driver.
+/* SRM WebRing — 3D cylinder carousel driver.
  *
  * Adapted from webring.ca's public/splash.js: a continuous-angle cylinder
  * carousel driven by wheel / touch / arrow-key input. Each <section class="panel">

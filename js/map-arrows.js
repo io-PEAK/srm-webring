@@ -1,5 +1,5 @@
 // ============================================================
-// js/map-arrows.js — SRM NCR WebRing splash arrows
+// js/map-arrows.js — SRM WebRing splash arrows
 // The tree/arrow widget on the splash map jumps to a random member
 // site in a new tab, matching the original webring widget behaviour.
 // ============================================================

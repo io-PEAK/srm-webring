@@ -1,9 +1,9 @@
 // ============================================================
-// js/directory.js — SRM NCR WebRing directory panel
+// js/directory.js — SRM WebRing directory panel
 // Renders the member list (desktop rows, mobile cards), wires the
 // search filter, and syncs highlights with the ring viz (SRMViz).
 // ============================================================
-/* SRM NCR Webring — directory panel.
+/* SRM WebRing — directory panel.
  *
  * Renders the member list (desktop: paginated rows; mobile: horizontal cards),
  * wires up the search filter, and synchronises highlights with the ring
@@ -76,7 +76,7 @@
 
     var city = document.createElement('span');
     city.className = 'directory-row-city';
-    city.textContent = m.location || 'SRM NCR';
+    city.textContent = m.location || 'SRM';
 
     var visit = document.createElement('span');
     visit.className = 'directory-row-visit';

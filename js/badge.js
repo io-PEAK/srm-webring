@@ -1,5 +1,5 @@
 // ============================================================
-// js/badge.js — SRM NCR WebRing badge editor
+// js/badge.js — SRM WebRing badge editor
 // Builds the animated 88x31 member badge on a <canvas>: emblem,
 // colour/accent presets, a frame strip, and GIF export via gif.js.
 // ============================================================

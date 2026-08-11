@@ -1,5 +1,5 @@
 // ============================================================
-// js/join.js — SRM NCR WebRing join page
+// js/join.js — SRM WebRing join page
 // Handles the join/update form: city autocomplete, badge upload,
 // custom validation, and the multipart POST to the backend worker
 // that opens a pull request for the new member.
@@ -284,11 +284,11 @@
   function buildWidgetSnippet(ring, site) {
     const base = (ring || location.origin).replace(/\/$/, '');
     return [
-      '<!-- SRM NCR WebRing widget -->',
+      '<!-- SRM WebRing widget -->',
       '<div class="srm-ring-widget">',
       '  <a href="' + base + '/#' + site + '?nav=prev" class="srm-ring-arrow">&larr;</a>',
       '  <a href="' + base + '/" class="srm-ring-logo">',
-      '    <img src="' + base + '/img/tree_yellow.png" alt="SRM NCR WebRing" width="16" height="16">',
+      '    <img src="' + base + '/img/tree_yellow.png" alt="SRM WebRing" width="16" height="16">',
       '  </a>',
       '  <a href="' + base + '/#' + site + '?nav=next" class="srm-ring-arrow">&rarr;</a>',
       '</div>',
@@ -431,7 +431,7 @@
       ? ''
       : (prefix.indexOf('@') !== -1
         ? "Don't include @srmist.edu.in, just your username (e.g. sn1234)."
-        : 'Enter your SRM^NCR username (e.g. sn1234).');
+        : 'Enter your SRM username (e.g. sn1234).');
     setFieldError(el, msg);
     return !msg;
   }
@@ -476,7 +476,7 @@
     const college = document.getElementById('collegeEmail');
     const collegePrefix = college.value.trim();
     const collegeFull = collegePrefix + '@srmist.edu.in';
-    check(college, /^[a-z0-9._%+-]+$/i.test(collegePrefix) && emailValid(collegeFull) ? '' : 'Enter your SRM^NCR username (e.g. sn1234).');
+    check(college, /^[a-z0-9._%+-]+$/i.test(collegePrefix) && emailValid(collegeFull) ? '' : 'Enter your SRM username (e.g. sn1234).');
     const personal = document.getElementById('personalEmail');
     check(personal, emailValid(personal.value.trim()) ? '' : 'Enter a valid email.');
 

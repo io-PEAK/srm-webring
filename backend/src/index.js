@@ -1,5 +1,5 @@
 // ============================================================
-// backend/src/index.js — SRM NCR WebRing Cloudflare Worker
+// backend/src/index.js — SRM WebRing Cloudflare Worker
 // Join/update PR creation, enquiry issues, badge uploads, and
 // per-member KV state. Requires GitHub token, KV and R2 bindings.
 // ============================================================
@@ -119,7 +119,7 @@ async function sendVerifyEmail(env, to, name, verifyUrl) {
         const senderEmail = env.SENDER_EMAIL;
   const htmlContent = emailShell(`
     <p>Hi <strong>${escapeHtml(name)}</strong>,</p>
-    <p>You submitted a request to join the SRM NCR WebRing. To confirm this SRM NCR email address belongs to you, click the button below:</p>
+    <p>You submitted a request to join the SRM WebRing. To confirm this SRM email address belongs to you, click the button below:</p>
     <p style="text-align:center;margin:28px 0;">
       <a href="${verifyUrl}" style="display:inline-block;padding:12px 28px;background:#0c4da2;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;">Verify my college email</a>
     </p>
@@ -136,7 +136,7 @@ async function sendVerifyEmail(env, to, name, verifyUrl) {
     body: JSON.stringify({
       sender: { email: senderEmail },
       to: [{ email: to, name }],
-      subject: 'Verify your email to join SRM^NCR WebRing',
+      subject: 'Verify your email to join SRM WebRing',
       htmlContent,
     }),
   });
@@ -149,7 +149,7 @@ function pageShell(title, bodyHtml, linkHtml) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} | SRM NCR WebRing</title>
+  <title>${title} | SRM WebRing</title>
   <link rel="icon" href="${RING_BASE}/img/tree_yellow.png" type="image/png">
   <style>
     @font-face{font-family:'Minecraft';font-style:normal;font-weight:400;font-display:swap;src:url('${RING_BASE}/fonts/Minecraft.ttf') format('truetype');}
@@ -189,18 +189,18 @@ function pageShell(title, bodyHtml, linkHtml) {
 
 // Shared notification email layout: centered tree logo header, clean
 // typography, and a muted footer. Fully inline-styled because most
-// email clients strip <style> tags. The styled name SRM<sup>NCR</sup>
-// is kept only in the header; body copy uses plain "SRM NCR".
+// email clients strip <style> tags. The styled name SRM
+// is kept only in the header; body copy uses plain "SRM".
 function emailShell(bodyHtml) {
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0b0e14;padding:24px;">
       <div style="max-width:520px;margin:0 auto;background:#141a24;border:1px solid #2a3446;border-radius:12px;padding:32px;color:#aab6c8;font-size:.95rem;line-height:1.55;">
         <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid #2a3446;margin-bottom:24px;">
-          <img src="https://io-PEAK.github.io/srm-ncr-webring/img/tree_yellow.png" alt="SRM NCR WebRing" style="width:52px;height:47px;display:block;margin:0 auto;">
-          <h2 style="color:#c8a008;margin:12px 0 0;font-size:1.3rem;font-weight:700;">SRM<sup>NCR</sup> WebRing</h2>
+          <img src="https://io-PEAK.github.io/srm-ncr-webring/img/tree_yellow.png" alt="SRM WebRing" style="width:52px;height:47px;display:block;margin:0 auto;">
+          <h2 style="color:#c8a008;margin:12px 0 0;font-size:1.3rem;font-weight:700;">SRM WebRing</h2>
         </div>
         ${bodyHtml}
-        <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #2a3446;color:#5a6a85;font-size:.78rem;line-height:1.5;">You received this email because your site is a member of the SRM NCR WebRing. If you didn't expect this, you can ignore it.</p>
+        <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #2a3446;color:#5a6a85;font-size:.78rem;line-height:1.5;">You received this email because your site is a member of the SRM WebRing. If you didn't expect this, you can ignore it.</p>
       </div>
     </div>
   `;
@@ -215,7 +215,7 @@ function verifiedPage(prUrl) {
   return pageShell(
     'Verified',
     `<h1>Verified<span>!</span></h1>
-     <p>Your SRM NCR college email is verified. Your webring request has been submitted as a pull request and will be reviewed shortly.</p>
+     <p>Your SRM college email is verified. Your webring request has been submitted as a pull request and will be reviewed shortly.</p>
      <p>Head back to the join page, we've moved you to the final step where your widget code is ready to copy.</p>
      <p><a class="btn" href="${RING_BASE}/join.html">Back to the join form &rarr;</a></p>`,
     prUrl
@@ -653,7 +653,7 @@ export default {
   const senderEmail = env.SENDER_EMAIL;
 
         if (type === 'warning') {
-          subject = '[ACTION REQUIRED] Your site is unreachable, SRM NCR WebRing';
+          subject = '[ACTION REQUIRED] Your site is unreachable, SRM WebRing';
           htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>During our automated checks, we were unable to reach your website: <a href="${site}" style="color:#6fb3ff;">${site}</a>.</p>
@@ -662,7 +662,7 @@ export default {
             <p>Once your website is back online, our 3-day health check will automatically restore your site to the active ring. No manual action is needed.</p>
           `);
         } else if (type === 'removal') {
-          subject = 'Website removed from SRM NCR WebRing';
+          subject = 'Website removed from SRM WebRing';
           htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your website (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been unreachable for <strong>15 days</strong>.</p>
@@ -670,15 +670,15 @@ export default {
             <p>If this was a mistake or your site is back up, you are welcome to submit a new join request at the site: <a href="https://io-PEAK.github.io/srm-ncr-webring/join.html" style="color:#6fb3ff;">Join Again</a>.</p>
           `);
         } else if (type === 'graduation') {
-          subject = 'Congratulations on your graduation, SRM NCR WebRing';
+          subject = 'Congratulations on your graduation, SRM WebRing';
           htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Happy graduation! We noticed your graduation date grace period (30 days) has passed.</p>
             <p>To keep the ring active for current students, your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been automatically removed from the directory.</p>
-            <p>Thank you for being part of the SRM NCR WebRing community. We wish you all the best in your post-college journey!</p>
+            <p>Thank you for being part of the SRM WebRing community. We wish you all the best in your post-college journey!</p>
           `);
         } else if (type === 'widget-warning') {
-          subject = '[ACTION REQUIRED] Your webring widget is missing, SRM NCR WebRing';
+          subject = '[ACTION REQUIRED] Your webring widget is missing, SRM WebRing';
           htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) is listed in the webring, but our checks can't find the webring widget on it.</p>
@@ -686,7 +686,7 @@ export default {
             <p>You can get the code from the join page after verifying your email. Paste it just before <code>&lt;/body&gt;</code> on your homepage.</p>
           `);
         } else if (type === 'widget-removal') {
-          subject = 'Removed from SRM NCR WebRing, widget missing';
+          subject = 'Removed from SRM WebRing, widget missing';
           htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has not had the webring widget installed for <strong>30 days</strong>, so your entry has been removed from <code>members.json</code>.</p>
@@ -792,7 +792,7 @@ export default {
           });
         }
 
-        // Only SRM^NCR college addresses qualify.
+        // Only SRM college addresses qualify.
         if (!entry.collegeEmail.endsWith(SRM_COLLEGE_DOMAIN)) {
           return new Response(JSON.stringify({ success: false, error: `Only ${SRM_COLLEGE_DOMAIN} college emails are accepted` }), {
             status: 400,

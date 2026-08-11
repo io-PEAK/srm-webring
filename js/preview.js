@@ -1,5 +1,5 @@
 // ============================================================
-// js/preview.js — SRM NCR WebRing site preview panel
+// js/preview.js — SRM WebRing site preview panel
 // Loads member sites in a sandboxed iframe (with a timeout and a
 // fallback card) and wires prev/next/random/open controls to the
 // Explore panel of the ring carousel.

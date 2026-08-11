@@ -1,5 +1,5 @@
 // ============================================================
-// js/ring.js — SRM NCR WebRing navigation widget
+// js/ring.js — SRM WebRing navigation widget
 // Runs on member sites: parses #site?nav=prev|next from the hash
 // and redirects to the previous/next active member in the ring.
 // ============================================================

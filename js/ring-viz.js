@@ -1,9 +1,9 @@
 // ============================================================
-// js/ring-viz.js — SRM NCR WebRing directory ring visualization
+// js/ring-viz.js — SRM WebRing directory ring visualization
 // Renders member nodes on a circle with links in ring order and
 // exposes window.SRMViz (highlight/hover) plus pan & zoom.
 // ============================================================
-/* SRM NCR Webring — directory ring visualization (no dependencies).
+/* SRM WebRing — directory ring visualization (no dependencies).
  *
  * Renders member nodes on a circle inside #ring-viz, links consecutive members
  * (the ring order), and exposes:

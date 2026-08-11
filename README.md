@@ -1,10 +1,10 @@
 <div align="center">
 
-# SRM NCR WebRing
+# SRM WebRing
 
-A public webring for SRM University NCR campus students to showcase portfolios, blogs, and personal projects connected in a ring, mapped across India, and kept alive by automation.
+A public webring for SRM University students to showcase portfolios, blogs, and personal projects connected in a ring, mapped across India, and kept alive by automation.
 
-<img src="images/screenshots/splash.png" alt="SRM NCR WebRing splash panel — hero with the India map" width="760">
+<img src="images/screenshots/splash.png" alt="SRM WebRing splash panel — hero with the India map" width="760">
 
 </div>
 

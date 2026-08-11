@@ -1,5 +1,5 @@
 // ============================================================
-// js/enquiry.js — SRM NCR WebRing enquiry page
+// js/enquiry.js — SRM WebRing enquiry page
 // Validates the enquiry form and POSTs it to the backend worker,
 // which opens a GitHub issue and returns its URL to the visitor.
 // ============================================================

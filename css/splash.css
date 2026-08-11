@@ -1,5 +1,5 @@
 /* ============================================================
-   css/splash.css — SRM NCR WebRing landing page stylesheet
+   css/splash.css — SRM WebRing landing page stylesheet
    Covers the full-screen splash: hero type, animated India map,
    about and join panels, ring widget and all responsive
    breakpoints. Fonts come from ../fonts.css.
@@ -178,7 +178,7 @@ body {
 .hero-bottom-text {
   font-family: 'Minecraft', sans-serif;
   font-weight: 400;
-  font-size: 14cqw;
+  font-size: 16cqw;
   line-height: 0.75;
   white-space: nowrap;
   letter-spacing: 0;
@@ -239,7 +239,7 @@ body {
 
 .splash-map-wrap {
   position: absolute;
-  top: 50%;
+  top: 54%;
   left: 57%;
   transform: translate(-50%, -50%);
   z-index: 1;
@@ -248,7 +248,7 @@ body {
 
 .splash-map {
   display: block;
-  height: 76vh;
+  height: 84vh;
   width: auto;
   aspect-ratio: 1000 / 1100;
   max-width: 92vw;
@@ -1466,7 +1466,7 @@ body {
   }
 
   .splash-map {
-    height: 70vh;
+    height: 74vh;
   }
 
   .hero-bottom-inner {
@@ -1476,7 +1476,7 @@ body {
   }
 
   .hero-bottom-text {
-    font-size: 28cqw;
+    font-size: 30cqw;
   }
 
   .ring-widget { width: 60vw; justify-content: center; }
@@ -1754,14 +1754,14 @@ body {
 /* ── Tablet: constrain fonts ── */
 @media (min-width: 768px) and (max-width: 1024px) {
   .hero-top { font-size: 11cqw; }
-  .hero-bottom-text { font-size: 11cqw; }
+  .hero-bottom-text { font-size: 14cqw; }
   .about-headline { font-size: clamp(3rem, 6vw, 5rem); }
   .about-inner { gap: 2rem; }
   .join-headline { font-size: clamp(4rem, 9vw, 7rem); }
   .join-count-number { font-size: clamp(2rem, 6vw, 5rem); }
   .join-inner { width: calc(100% - 3rem); height: calc(100% - 3rem); }
   .hero-flag { height: 12cqw; }
-  .splash-map { max-height: 60vh; }
+  .splash-map { max-height: 64vh; }
 
   .directory-inner { padding: 2rem 2rem; gap: 1.5rem; }
   .directory-header-site,
