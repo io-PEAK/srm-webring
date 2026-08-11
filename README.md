@@ -58,7 +58,7 @@ A public webring for SRM University students to showcase portfolios, blogs, and 
                                 ▼                    │  data/       │
                 ┌────────────────────────────┐       │  members.json│
                 │    Cloudflare Worker       │       │  cities.json │  ◄── source of
-                │  backend.srmncr…workers.dev│       └──────┬───────┘      truth (repo)
+                 │  backend.srmwebring.workers.dev│       └──────┬───────┘      truth (repo)
                 └──────┬─────────┬───────────┘              │
                        │ KV      │ REST                     │ GitHub REST API
               EMAIL_STORE        ├────────────────────────► │ (PRs / issues / labels /
@@ -146,7 +146,7 @@ Member → join.html (multipart POST /join) → Worker
 
 **<img src="images/icons/api.svg" width="20" height="20" valign="middle"/> &nbsp; API Reference**<br/>
 
-Base URL: `https://backend.srmncrwebring.workers.dev`
+Base URL: `https://backend.srmwebring.workers.dev`
 
 | Method | Endpoint              | Auth                   | Description                                                                    |
 | :----- | :-------------------- | :--------------------- | :----------------------------------------------------------------------------- |

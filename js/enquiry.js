@@ -92,7 +92,7 @@
     submitBtn.textContent = 'Sending...';
 
     // The Worker opens a GitHub issue and returns { success, issueUrl }.
-    fetch('https://backend.srmncrwebring.workers.dev/enquiry', {
+    fetch('https://backend.srmwebring.workers.dev/enquiry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),

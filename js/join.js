@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const API = 'https://backend.srmncrwebring.workers.dev';
+  const API = 'https://backend.srmwebring.workers.dev';
 
   const form = document.getElementById('joinForm');
   const gradDateInput = document.getElementById('gradDate');

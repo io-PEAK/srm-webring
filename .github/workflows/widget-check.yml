@@ -31,7 +31,7 @@ jobs:
           const members = require('./data/members.json');
 
           const LOOKUP_SECRET = process.env.LOOKUP_SECRET;
-          const WORKER_URL = 'https://backend.srmncrwebring.workers.dev';
+          const WORKER_URL = 'https://backend.srmwebring.workers.dev';
 
           // Widget counts as present if it pinged within this window
           // (checks run daily, but a quiet site can legitimately go a
