@@ -1,6 +1,9 @@
 <div align="center">
 
-# SRM WebRing
+<div align="center">
+  <img src="https://github.com/io-PEAK/srm-webring/blob/main/img/tree_yellow.png" alt="Project Logo" width="200">
+  <h1>SRM WebRing</h1>
+</div>
 
 A public webring for SRM University students to showcase portfolios, blogs, and personal projects connected in a ring, mapped across India, and kept alive by automation.
 
