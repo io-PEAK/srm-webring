@@ -6,5 +6,13 @@
     "gradDate": "01/10/2028",
     "location": "Ghaziabad",
     "badge": "https://backend.srmwebring.workers.dev/badges/1jhgpug.gif"
+  },
+  {
+    "name": "Abhinav Rana",
+    "website": "https://www.abster.tech/",
+    "program": "B.Tech Computer Science and Engineering",
+    "gradDate": "21/08/2028",
+    "location": "Ranchi",
+    "badge": "https://backend.srmwebring.workers.dev/badges/14y4qc0.gif"
   }
 ]
