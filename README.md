@@ -106,6 +106,33 @@ Member → join.html (multipart POST /join) → Worker
 
 **Site health** — A `check-sites` workflow probes every site every 3 days and flags unreachable members (`hidden` + `unreachableSince`). A `recheck-down-sites` workflow restores sites that come back, emails a warning at 10 days, and removes the entry at 15 days via the Worker's `/notify` route (Brevo). A `cleanup-graduated` workflow removes members past their graduation date + 30-day grace.
 
+**<img src="images/icons/widget.svg" width="20" height="20" valign="middle"/> &nbsp; Widget**<br/>
+
+Every member pastes this snippet just before `</body>` on their site. It renders a compact pill (← tree →) that links to the previous and next members in the ring, and embeds a 1×1 tracking pixel that pings the Worker so the widget-check workflow can verify installation.
+
+```html
+<!-- SRM WebRing widget -->
+<div class="srm-ring-widget">
+  <a href="https://io-PEAK.github.io/srm-webring/#https://your-site.com?nav=prev" class="srm-ring-arrow">&larr;</a>
+  <a href="https://io-PEAK.github.io/srm-webring/" class="srm-ring-logo">
+    <img src="https://io-PEAK.github.io/srm-webring/img/tree_yellow.png" alt="SRM WebRing" width="16" height="16">
+  </a>
+  <a href="https://io-PEAK.github.io/srm-webring/#https://your-site.com?nav=next" class="srm-ring-arrow">&rarr;</a>
+</div>
+<img src="https://backend.srmwebring.workers.dev/widget?site=https://your-site.com" width="1" height="1" alt="" style="border:0" aria-hidden="true">
+<style>
+.srm-ring-widget{display:inline-flex;align-items:center;gap:.6rem;padding:.5rem .9rem;
+border:1px solid rgba(12,77,162,.35);border-radius:999px;background:#fff;
+box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.srm-ring-arrow{text-decoration:none;font-weight:700;font-size:1.1rem;color:#0c4da2;line-height:1}
+.srm-ring-logo{display:inline-flex;align-items:center;gap:.3rem;text-decoration:none;
+font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem;line-height:1}
+.srm-ring-logo img{width:16px;height:16px}
+</style>
+```
+
+Replace `https://your-site.com` with your actual site URL. The `prev` / `next` links are resolved server-side against `members.json` at page-load time, so the ring stays up to date as members join and leave.
+
 **<img src="images/icons/structure.svg" width="20" height="20" valign="middle"/> &nbsp; Project Structure**<br/>
 
 ```
