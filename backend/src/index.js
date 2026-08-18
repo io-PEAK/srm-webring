@@ -270,6 +270,7 @@ async function finalizeJoin(env, ghHeaders, OWNER, REPO, entry, emailData, exist
   if (isUpdate) {
     members[existingIndex] = entry;
   } else {
+    entry.joinedAt = new Date().toISOString();
     members.push(entry);
   }
 

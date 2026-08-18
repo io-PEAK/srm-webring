@@ -39,6 +39,7 @@ jobs:
           const MAX_AGE_DAYS = 5;
           const WARN_DAYS = 21;
           const REMOVE_DAYS = 30;
+          const JOIN_GRACE_DAYS = 7; // new members get this long to install
 
           async function widgetLastSeen(site) {
             const res = await fetch(WORKER_URL + '/widget-status?site=' + encodeURIComponent(site), {
@@ -66,6 +67,16 @@ jobs:
             const remaining = [];
 
             for (const m of members) {
+              // Skip new members still within the installation grace period.
+              if (m.joinedAt) {
+                const daysSinceJoin = (now - new Date(m.joinedAt)) / (1000 * 60 * 60 * 24);
+                if (daysSinceJoin < JOIN_GRACE_DAYS) {
+                  console.log('Skipping (new member, ' + daysSinceJoin.toFixed(1) + ' days):', m.website);
+                  remaining.push(m);
+                  continue;
+                }
+              }
+
               let lastSeen = null;
               try {
                 lastSeen = await widgetLastSeen(m.website);
