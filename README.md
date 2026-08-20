@@ -106,7 +106,7 @@ Member → join.html (multipart POST /join) → Worker
 
 **Site health** — A `check-sites` workflow probes every site every 3 days and flags unreachable members (`hidden` + `unreachableSince`). A `recheck-down-sites` workflow restores sites that come back, emails a warning at 10 days, and removes the entry at 15 days via the Worker's `/notify` route (Brevo). A `cleanup-graduated` workflow removes members past their graduation date + 30-day grace.
 
-**<img src="images/icons/widget.svg" width="20" height="20" valign="middle"/> &nbsp; Widget**<br/>
+**<img src="img/tree_yellow.png" width="20" height="20" valign="middle"/> &nbsp; Widget**<br/>
 
 Every member pastes this snippet just before `</body>` on their site. It renders a compact pill (← tree →) that links to the previous and next members in the ring, and embeds a 1×1 tracking pixel that pings the Worker so the widget-check workflow can verify installation.
 
