@@ -22,6 +22,73 @@ A public webring for SRM University students to showcase portfolios, blogs, and 
 
 </div>
 
+<div align="center">
+
+## Contents
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [System Architecture](#system-architecture)
+- [Data Flow](#data-flow)
+- [Widget](#widget)
+- [Project Structure](#project-structure)
+- [API Reference](#api-reference)
+- [Getting Started](#getting-started)
+- [Automated Maintenance](#automated-maintenance)
+- [Security](#security)
+- [Testing](#testing)
+
+</div>
+
+---
+
+## Directory Structure
+
+```
+.
+├── index.html              ← 3D carousel landing (splash, about, directory, explore, join)
+├── join.html               ← join / update form with city autocomplete + badge upload
+├── badge.html              ← 88×31 animated GIF badge generator
+├── enquiry.html            ← issue-based enquiry form
+├── widget.html             ← demo page for the embeddable prev/next widget
+├── css/
+│   ├── style.css           ← shared theme (light/dark), subpage + widget styling
+│   └── splash.css          ← carousel, splash, directory, explorer, map styling
+├── fonts.css               ← self-hosted font-face declarations
+├── fonts/
+│   └── Minecraft.ttf       ← pixel display font for headings
+├── js/
+│   ├── splash.js           ← 3D panel carousel + panelchange/snapto events
+│   ├── splash-map.js       ← India SVG map with member dots + animated lines
+│   ├── directory.js        ← paginated, searchable member directory
+│   ├── ring-viz.js         ← interactive ring map (pan / zoom / search sync)
+│   ├── preview.js          ← live iframe explorer of member sites
+│   ├── members.js          ← shared member loader (worker API → JSON fallback)
+│   ├── ring.js             ← #member-url?nav=prev|next redirect handler
+│   ├── map-arrows.js       ← on-map prev / next / random navigation
+│   ├── badge.js            ← badge editor + animated GIF export
+│   ├── join.js             ← join form validation + step indicator + multipart submit
+│   └── enquiry.js          ← enquiry form validation + submit
+├── data/
+│   ├── members.json        ← public member list (the ring's source of truth)
+│   ├── cities.json         ← pre-geocoded city → { lat, lng, state } lookup
+│   └── programs.json       ← program/course list for directory filtering
+├── scripts/
+│   └── geocode-cities.js   ← one-time Nominatim geocoder for cities.json
+├── img/                    ← SRM logo, tree emblem, collage
+├── images/                 ← README screenshots + icons
+├── backend/                ← Cloudflare Worker API
+│   ├── src/index.js        ← all routes: join, enquiry, badges, members, widget, notify
+│   ├── test/index.spec.js  ← vitest tests against the Worker
+│   ├── vitest.config.js    ← workers-pool vitest config
+│   └── wrangler.jsonc      ← worker config + KV namespaces
+└── .github/workflows/      ← CI: validate-join, check-sites, recheck-down-sites,
+                               cleanup-graduated, widget-check
+```
+
+---
+
 **<img src="images/icons/screenshots.svg" width="20" height="20" valign="middle"/> &nbsp; Screenshots**<br/>
 
 |                                                                                                                                                             |                                                                                                                       |
