@@ -754,7 +754,7 @@
     snippetCode.style.background = 'rgba(0,0,0,.18)';
     snippetCode.style.borderRadius = '6px';
     snippetCode.style.border = '1px solid var(--border)';
-    snippetCode.textContent = buildWidgetSnippet(location.origin, document.getElementById('website').value.trim());
+    snippetCode.textContent = buildWidgetSnippet(location.origin + location.pathname.replace(/\/[^/]*$/, ''), document.getElementById('website').value.trim());
     el.appendChild(snippetCode);
 
     const copyBtn = document.createElement('button');
