@@ -22,7 +22,7 @@ A public webring for SRM University students to showcase portfolios, blogs, and 
 
 </div>
 
-<div align="center">
+---
 
 ## Contents
 
@@ -38,8 +38,6 @@ A public webring for SRM University students to showcase portfolios, blogs, and 
 - [Automated Maintenance](#automated-maintenance)
 - [Security](#security)
 - [Testing](#testing)
-
-</div>
 
 ---
 
