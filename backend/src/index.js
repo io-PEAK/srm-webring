@@ -131,10 +131,11 @@ async function sendVerifyEmail(env, to, name, verifyUrl) {
       'accept': 'application/json',
     },
     body: JSON.stringify({
-      sender: { email: senderEmail },
+      sender: { email: senderEmail, name: 'SRM WebRing' },
       to: [{ email: to, name }],
       subject: 'Verify your email to join SRM WebRing',
       htmlContent,
+      textContent: emailToText(htmlContent),
     }),
   });
   return { ok: res.ok, json: await res.json() };
@@ -201,6 +202,24 @@ function emailShell(bodyHtml) {
       </div>
     </div>
   `;
+}
+
+// Plain-text fallback for every email body. HTML-only emails score worse with
+// spam filters; including a text part is a well-known deliverability improvement.
+function emailToText(bodyHtml) {
+  return bodyHtml
+    .replace(/<br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\s+|\s+$/g, '')
+    .trim();
 }
 
 // A highlighted box for key warnings inside an email body.
@@ -644,14 +663,14 @@ export default {
         const personalEmail = member.personalEmail;
         const recipientName = member.name;
 
-        // Email content templates
+// Email content templates
         let subject = '';
         let htmlContent = '';
 
         const senderEmail = env.SENDER_EMAIL;
 
         if (type === 'warning') {
-          subject = '[ACTION REQUIRED] Your site is unreachable, SRM WebRing';
+          subject = 'Action needed: your site is unreachable, SRM WebRing';
           htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>During our automated checks, we were unable to reach your website: <a href="${site}" style="color:#6fb3ff;">${site}</a>.</p>
@@ -676,7 +695,7 @@ export default {
             <p>Thank you for being part of the SRM WebRing community. We wish you all the best in your post-college journey!</p>
           `);
         } else if (type === 'widget-warning') {
-          subject = '[ACTION REQUIRED] Your webring widget is missing, SRM WebRing';
+          subject = 'Action needed: your webring widget is missing, SRM WebRing';
           htmlContent = emailShell(`
             <p>Hi <strong>${recipientName}</strong>,</p>
             <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) is listed in the webring, but our checks can't find the webring widget on it.</p>
@@ -703,13 +722,14 @@ export default {
             'accept': 'application/json'
           },
           body: JSON.stringify({
-            sender: { email: senderEmail },
+            sender: { email: senderEmail, name: 'SRM WebRing' },
             to: [
               { email: collegeEmail, name: recipientName },
               { email: personalEmail, name: recipientName }
             ],
             subject: subject,
-            htmlContent: htmlContent
+            htmlContent: htmlContent,
+            textContent: emailToText(htmlContent)
           })
         });
 

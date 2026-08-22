@@ -521,7 +521,7 @@
     },
     2: {
       title: 'Check your inbox',
-      desc: 'We sent a one-time link to your college email. Open it and click \u201cVerify my college email\u201d, your pull request opens the moment you do.',
+      desc: 'We sent a one-time link to your college email. Open it and click \u201cVerify my college email\u201d, your pull request opens the moment you do. Can\u2019t find it? Check your spam / junk folder \u2014 if it\u2019s there, mark it \u201cNot spam\u201d so the next email lands in your inbox.',
     },
     3: {
       title: 'You\u2019re in, add the widget',
@@ -681,6 +681,13 @@
       location.reload();
     });
     line.appendChild(restart);
+
+    const spamNote = document.createElement('p');
+    spamNote.style.marginTop = '1rem';
+    spamNote.style.color = '#7a8aa5';
+    spamNote.style.fontSize = '.82rem';
+    spamNote.innerHTML = 'Can\u2019t find the email? Check your <strong>spam / junk</strong> folder, then click <strong>\u201cNot spam\u201d</strong> so future emails from the ring arrive in your inbox. If it\u2019s still missing, your college inbox may be blocking it \u2014 <a href="https://io-PEAK.github.io/srm-webring/join.html" style="color:#6fb3ff;">you can rejoin later</a>.';
+    el.appendChild(spamNote);
 
     const steps = document.createElement('ul');
     steps.className = 'onboard-checklist';
