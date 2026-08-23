@@ -133,7 +133,7 @@
       var circle = document.createElementNS(NS, 'circle');
       circle.setAttribute('cx', p.x.toFixed(1));
       circle.setAttribute('cy', p.y.toFixed(1));
-      circle.setAttribute('r', '8');
+      circle.setAttribute('r', '6');
       circle.setAttribute('class', 'anim-dot anim-dot-' + i);
       circle.style.animationDelay = (i * DOT_STAGGER) + 'ms, ' + ((i * DOT_STAGGER) + 500) + 'ms';
       var title = (entry.m.name || '') + (entry.m.location ? ' — ' + entry.m.location : '');
