@@ -285,23 +285,14 @@
     const base = (ring || location.origin).replace(/\/$/, '');
     return [
       '<!-- SRM WebRing widget -->',
-      '<div class="srm-ring-widget">',
-      '  <a href="' + base + '/#' + site + '?nav=prev" class="srm-ring-arrow">&larr;</a>',
-      '  <a href="' + base + '/" class="srm-ring-logo">',
-      '    <img src="' + base + '/img/tree_yellow.png" alt="SRM WebRing" width="16" height="16">',
+      '<div style="display:inline-flex;align-items:center;gap:.6rem;padding:.5rem .9rem;border:1px solid rgba(12,77,162,.35);border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);position:fixed;bottom:1rem;right:1rem;z-index:2147483647">',
+      '  <a href="' + base + '/#' + site + '?nav=prev" style="text-decoration:none;font-weight:700;font-size:1.1rem;color:#0c4da2;line-height:1">&larr;</a>',
+      '  <a href="' + base + '/" style="display:inline-flex;align-items:center;gap:.3rem;text-decoration:none;font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem;line-height:1">',
+      '    <img src="' + base + '/img/tree_yellow.png" alt="SRM WebRing" width="16" height="16" style="width:16px;height:16px">',
       '  </a>',
-      '  <a href="' + base + '/#' + site + '?nav=next" class="srm-ring-arrow">&rarr;</a>',
+      '  <a href="' + base + '/#' + site + '?nav=next" style="text-decoration:none;font-weight:700;font-size:1.1rem;color:#0c4da2;line-height:1">&rarr;</a>',
       '</div>',
       '<img src="' + API + '/widget?site=' + encodeURIComponent(site) + '" width="1" height="1" alt="" style="border:0" aria-hidden="true">',
-      '<style>',
-      '.srm-ring-widget{display:inline-flex;align-items:center;gap:.6rem;padding:.5rem .9rem;',
-      'border:1px solid rgba(12,77,162,.35);border-radius:999px;background:#fff;',
-      'box-shadow:0 1px 3px rgba(0,0,0,.08);position:fixed;bottom:1rem;right:1rem;z-index:2147483647;}',
-      '.srm-ring-arrow{text-decoration:none;font-weight:700;font-size:1.1rem;color:#0c4da2;line-height:1}',
-      '.srm-ring-logo{display:inline-flex;align-items:center;gap:.3rem;text-decoration:none;',
-      'font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem;line-height:1}',
-      '.srm-ring-logo img{width:16px;height:16px}',
-      '</style>',
     ].join('\n');
   }
 
