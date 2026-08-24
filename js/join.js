@@ -516,7 +516,7 @@
     },
     3: {
       title: 'You\u2019re in, add the widget',
-      desc: 'Paste this just before </body> on your homepage. The hidden pixel tells the ring you\u2019ve installed it; the navigation arrows link you into the ring.',
+      desc: 'Paste this in your root layout or before </body> on your homepage. The hidden pixel tells the ring you\u2019ve installed it; the navigation arrows link you into the ring.',
     },
   };
 
@@ -739,7 +739,7 @@
     widgetHeading.style.marginTop = '1.1rem';
     widgetHeading.style.marginBottom = '0.4rem';
     widgetHeading.style.fontWeight = '700';
-    widgetHeading.textContent = 'Paste this into your footer, just before </body>:';
+    widgetHeading.textContent = 'Paste this in your root layout or before </body>:';
     el.appendChild(widgetHeading);
 
     const snippetCode = document.createElement('code');

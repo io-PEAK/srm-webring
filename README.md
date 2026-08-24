@@ -173,7 +173,7 @@ Member → join.html (multipart POST /join) → Worker
 
 **<img src="img/tree_yellow.png" width="20" height="20" valign="middle"/> &nbsp; Widget**<br/>
 
-Every member pastes this snippet just before `</body>` on their site. It renders a compact pill (← tree →) that links to the previous and next members in the ring, and embeds a 1×1 tracking pixel that pings the Worker so the widget-check workflow can verify installation.
+Every member pastes this snippet into their site so the widget appears on every page. It renders a compact pill (← tree →) that links to the previous and next members in the ring, and embeds a 1×1 tracking pixel that pings the Worker so the widget-check workflow can verify installation.
 
 ```html
 <!-- SRM WebRing widget -->
@@ -187,7 +187,7 @@ Every member pastes this snippet just before `</body>` on their site. It renders
 <img src="https://backend.srmwebring.workers.dev/widget?site=https://your-site.com" width="1" height="1" alt="" style="border:0" aria-hidden="true">
 ```
 
-Replace `https://your-site.com` with your actual site URL. The `prev` / `next` links are resolved server-side against `members.json` at page-load time, so the ring stays up to date as members join and leave.
+Replace `https://your-site.com` with your actual site URL. Paste before `</body>` in plain HTML, or in your root layout component for React, Next.js, Vue, Svelte, or Astro — anywhere that renders on every page. The `prev` / `next` links are resolved dynamically against `members.json` at page-load time, so the ring stays up to date as members join and leave.
 
 **<img src="images/icons/structure.svg" width="20" height="20" valign="middle"/> &nbsp; Project Structure**<br/>
 
