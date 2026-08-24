@@ -24,5 +24,14 @@
     "location": "Delhi",
     "badge": "https://backend.srmwebring.workers.dev/badges/1njx9ii.gif",
     "joinedAt": "2026-08-20T09:55:43.769Z"
+  },
+  {
+    "name": "Yuvraj",
+    "website": "https://yuvraj-devme.vercel.app/",
+    "program": "B.Tech Computer Science and Engineering",
+    "gradDate": "28/06/2028",
+    "location": "Delhi",
+    "badge": "https://backend.srmwebring.workers.dev/badges/py9h6h.gif",
+    "joinedAt": "2026-08-24T08:57:52.663Z"
   }
 ]
