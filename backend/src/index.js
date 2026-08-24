@@ -115,13 +115,13 @@ function httpError(message, status = 500) {
 async function sendVerifyEmail(env, to, name, verifyUrl) {
         const senderEmail = env.SENDER_EMAIL;
   const htmlContent = emailShell(`
-    <p>Hi <strong>${escapeHtml(name)}</strong>,</p>
-    <p>You submitted a request to join the SRM WebRing. To confirm this SRM email address belongs to you, click the button below:</p>
+    <p style="margin:0 0 16px;">Hi <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 20px;">You asked to join the SRM WebRing. Click the button below to verify your college email:</p>
     <p style="text-align:center;margin:28px 0;">
-      <a href="${verifyUrl}" style="display:inline-block;padding:12px 28px;background:#0c4da2;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;">Verify my college email</a>
+      <a href="${verifyUrl}" style="display:inline-block;padding:12px 28px;background:#18181b;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:.9rem;">Verify my email</a>
     </p>
-    ${emailCallout('#0c4da2', 'Your verification link is valid for <strong>1 hour</strong> and works only once.')}
-    <p style="color:#7a8aa5;font-size:.85rem;word-break:break-all;">Or open this link: <a href="${verifyUrl}" style="color:#6fb3ff;">${verifyUrl}</a></p>
+    ${emailCallout('#d4d4d8', 'This link is valid for <strong>1 hour</strong> and works only once.')}
+    <p style="margin:20px 0 0;font-size:.85rem;color:#71717a;word-break:break-all;">Or paste this link: <a href="${verifyUrl}" style="color:#18181b;">${verifyUrl}</a></p>
   `);
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -191,14 +191,13 @@ function pageShell(title, bodyHtml, linkHtml) {
 // is kept only in the header; body copy uses plain "SRM".
 function emailShell(bodyHtml) {
   return `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0b0e14;padding:24px;">
-      <div style="max-width:520px;margin:0 auto;background:#141a24;border:1px solid #2a3446;border-radius:12px;padding:32px;color:#aab6c8;font-size:.95rem;line-height:1.55;">
-        <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid #2a3446;margin-bottom:24px;">
-          <img src="https://io-PEAK.github.io/srm-webring/img/tree_yellow.png" alt="SRM WebRing" style="width:52px;height:47px;display:block;margin:0 auto;">
-          <h2 style="color:#c8a008;margin:12px 0 0;font-size:1.3rem;font-weight:700;">SRM WebRing</h2>
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f4f4f5;padding:24px;">
+      <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e4e4e7;border-radius:8px;padding:32px;color:#27272a;font-size:.95rem;line-height:1.6;">
+        <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid #e4e4e7;margin-bottom:24px;">
+          <p style="margin:0;font-size:1.2rem;font-weight:700;color:#18181b;letter-spacing:-0.02em;">SRM WebRing</p>
         </div>
         ${bodyHtml}
-        <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #2a3446;color:#5a6a85;font-size:.78rem;line-height:1.5;">You received this email because your site is a member of the SRM WebRing. If you didn't expect this, you can ignore it.</p>
+        <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e4e4e7;color:#a1a1aa;font-size:.78rem;line-height:1.5;">You received this because your site is part of the SRM WebRing. If this wasn't you, just ignore this email.</p>
       </div>
     </div>
   `;
@@ -224,7 +223,7 @@ function emailToText(bodyHtml) {
 
 // A highlighted box for key warnings inside an email body.
 function emailCallout(color, html) {
-  return `<div style="background:#1b2130;border:1px solid ${color};border-left:4px solid ${color};border-radius:6px;padding:14px 16px;margin:20px 0;">${html}</div>`;
+  return `<div style="background:#f9fafb;border:1px solid #e4e4e7;border-left:4px solid ${color};border-radius:6px;padding:14px 16px;margin:20px 0;font-size:.9rem;">${html}</div>`;
 }
 
 function verifiedPage(prUrl) {
@@ -672,42 +671,40 @@ export default {
         if (type === 'warning') {
           subject = 'Action needed: your site is unreachable, SRM WebRing';
           htmlContent = emailShell(`
-            <p>Hi <strong>${recipientName}</strong>,</p>
-            <p>During our automated checks, we were unable to reach your website: <a href="${site}" style="color:#6fb3ff;">${site}</a>.</p>
-            <p>Your site has been marked as <strong>hidden</strong> and is temporarily excluded from the WebRing navigation and directory to keep things running smoothly for visitors.</p>
-            ${emailCallout('#ffcc00', '<strong>[WARNING]</strong> Your site has been down for <strong>10 days</strong>. If it remains unreachable for 5 more days (15 days total), your entry will be permanently removed from the WebRing.')}
-            <p>Once your website is back online, our 3-day health check will automatically restore your site to the active ring. No manual action is needed.</p>
+            <p style="margin:0 0 16px;">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 12px;">During our automated checks, we were unable to reach your website: <a href="${site}" style="color:#18181b;text-decoration:underline;">${site}</a>.</p>
+            <p style="margin:0 0 12px;">Your site has been marked as <strong>hidden</strong> and is temporarily excluded from the WebRing.</p>
+            ${emailCallout('#f59e0b', '<strong>Heads up</strong> — your site has been down for <strong>10 days</strong>. If it stays unreachable for 5 more days (15 total), your entry will be removed.')}
+            <p style="margin:0;">Once your site is back online, our health check will automatically restore it — no action needed.</p>
           `);
         } else if (type === 'removal') {
           subject = 'Website removed from SRM WebRing';
           htmlContent = emailShell(`
-            <p>Hi <strong>${recipientName}</strong>,</p>
-            <p>Your website (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been unreachable for <strong>15 days</strong>.</p>
-            <p>As per the webring rules, your entry has been permanently removed from <code>members.json</code>.</p>
-            <p>If this was a mistake or your site is back up, you are welcome to submit a new join request at the site: <a href="https://io-PEAK.github.io/srm-webring/join.html" style="color:#6fb3ff;">Join Again</a>.</p>
+            <p style="margin:0 0 16px;">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 12px;">Your website (<a href="${site}" style="color:#18181b;text-decoration:underline;">${site}</a>) has been unreachable for <strong>15 days</strong>, so it has been removed from the WebRing.</p>
+            <p style="margin:0;">If this was a mistake or your site is back up, you're welcome to rejoin at <a href="https://io-PEAK.github.io/srm-webring/join.html" style="color:#18181b;text-decoration:underline;">join again</a>.</p>
           `);
         } else if (type === 'graduation') {
           subject = 'Congratulations on your graduation, SRM WebRing';
           htmlContent = emailShell(`
-            <p>Hi <strong>${recipientName}</strong>,</p>
-            <p>Happy graduation! We noticed your graduation date grace period (30 days) has passed.</p>
-            <p>To keep the ring active for current students, your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has been automatically removed from the directory.</p>
-            <p>Thank you for being part of the SRM WebRing community. We wish you all the best in your post-college journey!</p>
+            <p style="margin:0 0 16px;">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 12px;">Happy graduation! Your grace period has passed, and your site (<a href="${site}" style="color:#18181b;text-decoration:underline;">${site}</a>) has been removed from the directory to keep the ring active for current students.</p>
+            <p style="margin:0;">Thank you for being part of SRM WebRing. Wishing you all the best!</p>
           `);
         } else if (type === 'widget-warning') {
           subject = 'Action needed: your webring widget is missing, SRM WebRing';
           htmlContent = emailShell(`
-            <p>Hi <strong>${recipientName}</strong>,</p>
-            <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) is listed in the webring, but our checks can't find the webring widget on it.</p>
-            ${emailCallout('#ffcc00', '<strong>[WARNING]</strong> The widget is what makes your site part of the ring navigation. If it is still missing in <strong>9 days</strong> (30 days total), your entry will be removed.')}
-            <p>You can get the code from the join page after verifying your email. Paste it just before <code>&lt;/body&gt;</code> on your homepage.</p>
+            <p style="margin:0 0 16px;">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 12px;">Your site (<a href="${site}" style="color:#18181b;text-decoration:underline;">${site}</a>) is listed in the webring, but we can't find the widget on it.</p>
+            ${emailCallout('#f59e0b', '<strong>Heads up</strong> — if the widget is still missing in <strong>9 days</strong> (30 total), your entry will be removed.')}
+            <p style="margin:0;">You can get the widget code from the join page. Paste it in your root layout or before <code>&lt;/body&gt;</code>.</p>
           `);
         } else if (type === 'widget-removal') {
           subject = 'Removed from SRM WebRing, widget missing';
           htmlContent = emailShell(`
-            <p>Hi <strong>${recipientName}</strong>,</p>
-            <p>Your site (<a href="${site}" style="color:#6fb3ff;">${site}</a>) has not had the webring widget installed for <strong>30 days</strong>, so your entry has been removed from <code>members.json</code>.</p>
-            <p>You're welcome to rejoin anytime, add the widget to your site and submit a new join request at <a href="https://io-PEAK.github.io/srm-webring/join.html" style="color:#6fb3ff;">Join the ring</a>.</p>
+            <p style="margin:0 0 16px;">Hi <strong>${recipientName}</strong>,</p>
+            <p style="margin:0 0 12px;">Your site (<a href="${site}" style="color:#18181b;text-decoration:underline;">${site}</a>) hasn't had the widget for <strong>30 days</strong>, so your entry has been removed.</p>
+            <p style="margin:0;">You're welcome to rejoin anytime at <a href="https://io-PEAK.github.io/srm-webring/join.html" style="color:#18181b;text-decoration:underline;">join the ring</a>.</p>
           `);
         } else {
           return new Response('Invalid notification type', { status: 400, headers: corsHeaders });
