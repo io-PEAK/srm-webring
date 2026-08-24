@@ -178,11 +178,11 @@ Every member pastes this snippet just before `</body>` on their site. It renders
 ```html
 <!-- SRM WebRing widget -->
 <div class="srm-ring-widget">
-  <a href="https://io-PEAK.github.io/srm-webring/#https://your-site.com?nav=prev" class="srm-ring-arrow">&larr;</a>
+  <a href="https://io-PEAK.github.io/srm-webring/#https://your-site.com/?nav=prev" class="srm-ring-arrow">&larr;</a>
   <a href="https://io-PEAK.github.io/srm-webring/" class="srm-ring-logo">
     <img src="https://io-PEAK.github.io/srm-webring/img/tree_yellow.png" alt="SRM WebRing" width="16" height="16">
   </a>
-  <a href="https://io-PEAK.github.io/srm-webring/#https://your-site.com?nav=next" class="srm-ring-arrow">&rarr;</a>
+  <a href="https://io-PEAK.github.io/srm-webring/#https://your-site.com/?nav=next" class="srm-ring-arrow">&rarr;</a>
 </div>
 <img src="https://backend.srmwebring.workers.dev/widget?site=https://your-site.com" width="1" height="1" alt="" style="border:0" aria-hidden="true">
 <style>
