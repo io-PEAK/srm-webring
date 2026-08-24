@@ -296,7 +296,7 @@
       '<style>',
       '.srm-ring-widget{display:inline-flex;align-items:center;gap:.6rem;padding:.5rem .9rem;',
       'border:1px solid rgba(12,77,162,.35);border-radius:999px;background:#fff;',
-      'box-shadow:0 1px 3px rgba(0,0,0,.08)}',
+      'box-shadow:0 1px 3px rgba(0,0,0,.08);position:fixed;bottom:1rem;right:1rem;z-index:2147483647;}',
       '.srm-ring-arrow{text-decoration:none;font-weight:700;font-size:1.1rem;color:#0c4da2;line-height:1}',
       '.srm-ring-logo{display:inline-flex;align-items:center;gap:.3rem;text-decoration:none;',
       'font-weight:700;letter-spacing:-.02em;color:#c8a008;font-size:.95rem;line-height:1}',
