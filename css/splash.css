@@ -18,7 +18,7 @@
   --accent-2: #c8a008;
   --panel-alt: #efece7;
   --fg-on-accent: #fff;
-  --font-display: 'Minecraft', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -33,7 +33,7 @@
     --accent-2: #c8a008;
     --panel-alt: #1a1918;
     --fg-on-accent: #fff;
-    --font-display: 'Minecraft', sans-serif;
+    --font-display: 'Space Grotesk', sans-serif;
   }
 }
 
@@ -153,9 +153,12 @@ body {
 .hero-top {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: 0;
+  letter-spacing: -0.06em;
   font-size: 12cqw;
   color: var(--fg);
+  -webkit-text-stroke: 5px var(--fg);
+  text-stroke: 5px var(--fg);
+  paint-order: stroke fill;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -176,13 +179,16 @@ body {
 }
 
 .hero-bottom-text {
-  font-family: 'Minecraft', sans-serif;
+  font-family: 'Space Grotesk', sans-serif;
   font-weight: 400;
   font-size: 16cqw;
   line-height: 0.75;
   white-space: nowrap;
-  letter-spacing: 0;
+  letter-spacing: -0.08em;
   color: var(--accent);
+  -webkit-text-stroke: 4px var(--fg);
+  text-stroke: 4px var(--fg);
+  paint-order: stroke fill;
 }
 
 .hero-bottom-text sup {
@@ -383,10 +389,13 @@ body {
 .about-headline {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: 0;
+  letter-spacing: -0.03em;
   font-size: clamp(3rem, 7vw, 8rem);
   line-height: 0.92;
   color: var(--fg);
+  -webkit-text-stroke: 5px var(--fg);
+  text-stroke: 5px var(--fg);
+  paint-order: stroke fill;
 }
 
 /* Lead text */
@@ -725,6 +734,8 @@ body {
 
 .ring-node-dot {
   fill: var(--accent-2);
+  stroke: var(--bg);
+  stroke-width: 1.5;
   opacity: 0.7;
   transition: transform 0.2s, opacity 0.2s;
   transform-origin: center;
@@ -746,8 +757,8 @@ body {
 .ring-link-line {
   fill: none;
   stroke: var(--fg-muted);
-  stroke-width: 1;
-  opacity: 0.35;
+  stroke-width: 3.5;
+  opacity: 0.5;
   transition: opacity 0.25s, stroke 0.25s, stroke-width 0.25s;
 }
 
@@ -755,9 +766,9 @@ body {
 .ring-ghost-path {
   fill: none;
   stroke: var(--border);
-  stroke-width: 0.5;
+  stroke-width: 3;
   stroke-dasharray: 3 6;
-  opacity: 0.15;
+  opacity: 0.4;
 }
 
 /* Hover bloom states */
@@ -774,9 +785,9 @@ body {
 }
 
 .directory-ring-wrap.has-highlight .ring-link-line.is-highlighted {
-  opacity: 0.5;
+  opacity: 0.7;
   stroke: var(--accent-2);
-  stroke-width: 1;
+  stroke-width: 4;
 }
 
 .ring-node.is-highlighted .ring-node-dot {
@@ -1204,7 +1215,7 @@ body {
 .join-headline {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: 0;
+  letter-spacing: -0.06em;
   font-size: clamp(4rem, 11vw, 10rem);
   color: var(--fg);
   display: flex;
@@ -1212,8 +1223,17 @@ body {
   align-items: flex-start;
 }
 
+.join-headline .stretch-wide:not(.join-headline-accent) {
+  -webkit-text-stroke: 5px var(--fg);
+  text-stroke: 5px var(--fg);
+  paint-order: stroke fill;
+}
+
 .join-headline-accent {
   color: var(--accent);
+  -webkit-text-stroke: 4px var(--fg);
+  text-stroke: 4px var(--fg);
+  paint-order: stroke fill;
 }
 
 .join-count {
@@ -1226,7 +1246,7 @@ body {
 .join-count-number {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: 0;
+  letter-spacing: -0.05em;
   font-size: clamp(2rem, 8vw, 7rem);
   line-height: 1;
   color: var(--accent);
@@ -1360,7 +1380,7 @@ body {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   opacity: 0;
   transition: opacity 0.18s ease 0.1s;
 }

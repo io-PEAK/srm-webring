@@ -55,7 +55,7 @@ A public webring for SRM University students to showcase portfolios, blogs, and 
 │   └── splash.css          ← carousel, splash, directory, explorer, map styling
 ├── fonts.css               ← self-hosted font-face declarations
 ├── fonts/
-│   └── Minecraft.ttf       ← pixel display font for headings
+│   └── (no local fonts — all loaded from Google CDN)
 ├── js/
 │   ├── splash.js           ← 3D panel carousel + panelchange/snapto events
 │   ├── splash-map.js       ← India SVG map with member dots + animated lines
@@ -108,7 +108,7 @@ A public webring for SRM University students to showcase portfolios, blogs, and 
 | Layer        | Technology                                                                                                                                 |
 | :----------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
 | **Frontend** | Static HTML5, CSS3 (custom properties + `prefers-color-scheme` dark mode, 3D transforms), vanilla JavaScript — no build step, no framework |
-| **Fonts**    | Space Grotesk & Space Mono (self-hosted woff2), Minecraft (bundled locally) for headings                                                   |
+| **Fonts**    | Space Grotesk & Space Mono (self-hosted woff2 from Google CDN)                                                                                      |
 | **Backend**  | Cloudflare Workers (Wrangler 4, `nodejs_compat`), Cloudflare KV for email mappings and uploaded badges                                     |
 | **APIs**     | GitHub REST API (pull requests, issues, labels, file contents), Brevo SMTP (email), Nominatim/OpenStreetMap (geocoding)                    |
 | **CI / CD**  | GitHub Actions — join-PR validation, site health checks, graduated-member cleanup                                                          |
@@ -202,7 +202,7 @@ Replace `https://your-site.com` with your actual site URL. Paste before `</body>
 │   ├── style.css           # Shared theme (light/dark), subpage + widget styling
 │   └── splash.css          # Carousel, splash, directory, explorer, map styling
 ├── fonts.css               # Self-hosted font-face declarations
-├── fonts/Minecraft.ttf     # Pixel display font for headings
+├── (no local fonts — all loaded from Google CDN)
 ├── js/
 │   ├── splash.js           # 3D panel carousel + panelchange/snapto events
 │   ├── splash-map.js       # India SVG map with member dots + animated lines

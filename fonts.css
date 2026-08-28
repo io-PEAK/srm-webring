@@ -1,20 +1,11 @@
 /* ============================================================
    fonts.css — self-hosted font declarations
    Space Grotesk + Space Mono (served from Google's CDN as
-   static woff2 URLs) and the locally bundled Minecraft display
-   font used for site headings.
+   static woff2 URLs) used throughout the site.
    ============================================================ */
 /* Space Grotesk + Space Mono — self-hosted from Google Fonts CDN-as-static
    To switch to fully self-hosted WOFF2 files, drop them into /fonts/ and
    point the src() URLs at the local files. */
-
-@font-face {
-  font-family: 'Minecraft';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/Minecraft.ttf') format('truetype');
-}
 
 @font-face {
   font-family: 'Space Grotesk';

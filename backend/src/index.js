@@ -150,7 +150,6 @@ function pageShell(title, bodyHtml, linkHtml) {
   <title>${title} | SRM WebRing</title>
   <link rel="icon" href="${RING_BASE}/img/tree_yellow.png" type="image/png">
   <style>
-    @font-face{font-family:'Minecraft';font-style:normal;font-weight:400;font-display:swap;src:url('${RING_BASE}/fonts/Minecraft.ttf') format('truetype');}
     @font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;src:url('https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4C_k3HqU.woff2') format('woff2');}
     @font-face{font-family:'Space Mono';font-style:normal;font-weight:400;font-display:swap;src:url('https://fonts.gstatic.com/s/spacemono/v17/i7dPIFZifjKcF5UAWdDRYEF8RXi4EwQ.woff2') format('woff2');}
     @font-face{font-family:'Space Mono';font-style:normal;font-weight:700;font-display:swap;src:url('https://fonts.gstatic.com/s/spacemono/v17/i7dMIFZifjKcF5UAWdDRaPpZUFWaHi6WZ3Q.woff2') format('woff2');}
@@ -161,10 +160,10 @@ function pageShell(title, bodyHtml, linkHtml) {
     .back-link{position:fixed;top:1rem;left:1rem;z-index:50;background:var(--accent);color:var(--fg-on-accent);padding:1rem 2.5rem;border-radius:6px;font-family:var(--font-body);font-size:1.1rem;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.18);transition:opacity .2s;}
     .back-link:hover{opacity:.85;color:var(--fg-on-accent);}
     main{max-width:720px;margin:0 auto;padding:8rem 2rem 4rem;min-height:100dvh;}
-    h1{font-family:'Minecraft',sans-serif;font-weight:400;font-size:clamp(2rem,5vw,4rem);letter-spacing:0;line-height:1;text-transform:uppercase;margin-bottom:1rem;}
+    h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(2rem,5vw,4rem);letter-spacing:0;line-height:1;text-transform:uppercase;margin-bottom:1rem;}
     h1 span{color:var(--accent-2);}
     p{color:var(--fg-muted);line-height:1.6;margin-bottom:1rem;max-width:38rem;}
-    h2{font-family:'Minecraft',sans-serif;font-weight:400;letter-spacing:0;margin:1.6rem 0 .6rem;font-size:1.4rem;}
+    h2{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:0;margin:1.6rem 0 .6rem;font-size:1.4rem;}
     code{font-family:var(--font-mono);}
     .widget-code{position:relative;background:var(--panel-alt);border:1px solid var(--border);border-radius:10px;padding:1rem 1rem .5rem;margin-bottom:1.2rem;max-width:38rem;}
     .widget-code pre{margin:0;overflow-x:auto;font-family:var(--font-mono);font-size:.78rem;line-height:1.55;color:var(--fg);white-space:pre;padding-top:1.6rem;}
