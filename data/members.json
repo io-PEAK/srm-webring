@@ -14,7 +14,8 @@
     "gradDate": "21/08/2028",
     "location": "Ranchi",
     "badge": "https://backend.srmwebring.workers.dev/badges/14y4qc0.gif",
-    "widgetMissingSince": "2026-08-19T02:51:13.722Z"
+    "widgetMissingSince": "2026-08-19T02:51:13.722Z",
+    "widgetWarningEmailSent": true
   },
   {
     "name": "Aryan Gupta",
