@@ -307,7 +307,7 @@ Optional Worker variable `SENDER_EMAIL` (defaults to `webring@srmncr.edu.in`) se
 
 ### GitHub Actions secrets
 
-`GITHUB_TOKEN` (or a PAT with repo scope) and `LOOKUP_SECRET` are needed by the workflows that validate join PRs and send down-site / graduation / widget emails. Add them under **Settings → Secrets and variables → Actions**.
+`BOT_PUSH_TOKEN` (a fine-grained PAT with `Contents: read/write` and `Pull requests: read/write`, used to push bot updates and open PRs as a real user so their workflow checks run without manual approval) and `LOOKUP_SECRET` are needed by the workflows that validate join PRs and send down-site / graduation / widget emails. Add them under **Settings → Secrets and variables → Actions**.
 
 **<img src="images/icons/watch.svg" width="20" height="20" valign="middle"/> &nbsp; Automated Maintenance**<br/>
 
